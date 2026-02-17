@@ -1,485 +1,383 @@
-# Multi-Tenant Architecture - Building Maintenance App
+# BUILDING-CENTRIC ARCHITECTURE - Building Maintenance App
 
-## 🏗️ Architecture Overview
+## 🏗️ ARCHITECTURE OVERVIEW
 
-### **Core Principle:**
-**"Build for multi-tenant from day one, evolve to hybrid when needed"**
+### **Core Paradigm Shift:**
+**"Buildings are permanent, management is temporal, tenancy is temporal"**
 
-### **Database Schema Design:**
+### **Business Reality Addressed:**
+1. **Property Managers Change** - Management companies win/lose contracts
+2. **Tenants Move** - Average turnover 30-50% annually  
+3. **Buildings Remain** - Physical assets persist for decades
+4. **Units Remain** - Physical spaces with ongoing maintenance history
+
+### **Architecture Principle:**
 ```
-Tenant (Organization)
-├── User (belongs to Tenant)
-├── Building (belongs to Tenant)
-├── Issue (belongs to Tenant)
-└── WorkOrder (belongs to Tenant)
+Building (Permanent Entity)
+├── Management Timeline (Temporal)
+├── Unit Directory (Physical)
+├── Asset Registry (Physical)
+├── Maintenance History (Accumulating)
+└── Tenant History (Temporal)
 ```
-
-### **Key Design Decisions:**
-
-1. **Tenant Isolation at Database Level:**
-   - Every table has `tenantId` column
-   - All queries include `WHERE tenantId = ?`
-   - Composite unique constraints: `@@unique([email, tenantId])`
-
-2. **Authentication & Authorization:**
-   - JWT tokens include `tenantId`
-   - Middleware validates tenant context on every request
-   - Role-based access control within tenant boundaries
-
-3. **Data Security:**
-   - Row-level security enforced by application
-   - No cross-tenant data leakage possible
-   - Tenant-specific encryption keys (future)
 
 ---
 
-## 📊 Database Schema Updates
+## 📊 DATABASE SCHEMA DESIGN
 
-### **New Models:**
-
-#### **1. Tenant Model**
+### **Core Entity Relationships:**
 ```prisma
-model Tenant {
-  id        String   @id @default(cuid())
-  name      String   // Company name
-  subdomain String   @unique  // acme-properties.buildingapp.com
-  plan      TenantPlan @default(STARTER)
-  status    TenantStatus @default(ACTIVE)
-  settings  Json     @default("{}") // Tenant-specific configurations
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// Building - FIRST-CLASS CITIZEN (permanent)
+model Building {
+  id            String
+  address       String    // Unique globally
+  // Physical attributes never change
   
-  // Relations
-  users      User[]
-  buildings  Building[]
-  issues     Issue[]
-  workOrders WorkOrder[]
+  // Temporal Management
+  managementHistory ManagementContract[]
+  currentManagement ManagementCompany?
+  
+  // Physical Structure
+  units         Unit[]
+  assets        Asset[]
+  
+  // Accumulated History
+  issues        Issue[]
+  workOrders    WorkOrder[]
+}
+
+// Management Company - Temporal Relationship
+model ManagementCompany {
+  id            String
+  name          String
+  subdomain     String    // acme-properties.buildingapp.com
+  
+  // Current Portfolio
+  buildings     Building[]
+  
+  // Contract History
+  contracts     ManagementContract[]
+  
+  // Employees
+  users         User[]
+}
+
+// Management Contract - Temporal Context
+model ManagementContract {
+  id            String
+  buildingId    String
+  managementCompanyId String
+  startDate     DateTime
+  endDate       DateTime?
+  status        ContractStatus
+  
+  // A building can have only one active contract at a time
+  @@unique([buildingId, status], map: "building_active_contract")
+}
+
+// Unit - Physical Space
+model Unit {
+  id            String
+  buildingId    String
+  unitNumber    String    // "302", "A1", "Penthouse"
+  
+  // Tenant History (who lived here when)
+  tenantHistory TenantHistory[]
+  currentTenant User?
+  
+  // Unit number unique within building
+  @@unique([buildingId, unitNumber])
+}
+
+// Tenant History - Temporal Occupancy
+model TenantHistory {
+  id            String
+  unitId        String
+  userId        String
+  moveInDate    DateTime
+  moveOutDate   DateTime?
+  
+  @@unique([unitId, userId, moveInDate])
 }
 ```
 
-#### **2. Updated User Model**
-```prisma
-model User {
-  // ... existing fields ...
-  tenantId  String  // Foreign key to Tenant
-  tenant    Tenant  @relation(fields: [tenantId], references: [id])
-  
-  // Composite unique: email must be unique within tenant
-  @@unique([email, tenantId])
-}
-```
-
-### **Tenant Context Flow:**
-
-```
-1. User signs up → Creates Tenant + Admin User
-2. User logs in → JWT includes tenantId
-3. API Request → Middleware extracts tenantId from JWT
-4. Database Query → Automatically filters by tenantId
-5. Response → Only tenant's data returned
-```
-
 ---
 
-## 🔐 Security Implementation
+## 🔐 ACCESS CONTROL MODEL
 
-### **Authentication Middleware:**
+### **Multi-Dimensional Access Control:**
+
+| Role | Building Data | Management Data | Tenant Data |
+|------|---------------|-----------------|-------------|
+| **Building Owner** | Full history | All management periods | Aggregated only |
+| **Current Manager** | Full access | Current period only | Current tenants only |
+| **Previous Manager** | Read-only (their period) | Their period only | Their period tenants |
+| **Tenant** | Their unit only | Current manager info | Their history only |
+| **Technician** | Assigned buildings | Current manager | Current assignments |
+
+### **Query Filtering Example:**
 ```typescript
-// 1. Extract JWT token
-const payload = AuthService.verifyToken(token);
-
-// 2. Validate tenant exists and is active
-const tenant = await prisma.tenant.findUnique({
-  where: { id: payload.tenantId, status: 'ACTIVE' }
+// Building owner sees ALL history
+const allIssues = await prisma.issue.findMany({
+  where: { buildingId: 'bld-123' }
 });
 
-// 3. Set tenant context on request
-req.tenant = {
-  tenantId: payload.tenantId,
-  tenantPlan: tenant.plan,
-  userId: payload.userId,
-  userRole: payload.role
-};
-```
-
-### **Tenant-Scoped Database Queries:**
-```typescript
-// All queries automatically include tenant filter
-const tenantPrisma = getTenantPrisma(req.tenant.tenantId);
-
-// This query only returns buildings for this tenant
-const buildings = await tenantPrisma.building.findMany({
-  where: { /* automatically adds tenantId filter */ }
-});
-```
-
-### **Role Hierarchy within Tenant:**
-```
-SUPER_ADMIN (Platform) > ADMIN (Tenant) > MANAGER > MAINTENANCE > TENANT
-```
-
----
-
-## 🚀 API Endpoints
-
-### **Public Endpoints (No Authentication):**
-```
-POST   /api/tenants/signup          # Create new tenant/organization
-GET    /api/tenants/check-subdomain/:subdomain
-```
-
-### **Tenant Admin Endpoints:**
-```
-GET    /api/tenants/me              # Get current tenant info
-PATCH  /api/tenants/me              # Update tenant settings
-GET    /api/tenants/stats           # Get tenant usage statistics
-GET    /api/tenants/users           # List users in tenant
-GET    /api/tenants/buildings       # List buildings in tenant
-```
-
-### **Super Admin Endpoints:**
-```
-GET    /api/tenants/                # List all tenants (platform view)
-GET    /api/tenants/:tenantId       # Get specific tenant details
-PATCH  /api/tenants/:tenantId       # Update tenant (suspend, change plan)
-```
-
-### **Tenant-Scoped Resource Endpoints:**
-```
-# All these automatically scope to current tenant
-GET    /api/users                   # Only users in current tenant
-POST   /api/buildings              # Building created in current tenant
-GET    /api/issues                 # Only issues in current tenant
-```
-
----
-
-## 💰 Pricing & Plans
-
-### **Plan Tiers:**
-
-#### **Starter Plan ($0.75/unit/month)**
-- Up to 5 buildings
-- Up to 100 units
-- Basic features
-- Email support
-- 14-day free trial
-
-#### **Professional Plan ($1.50/unit/month)**
-- Up to 50 buildings
-- Up to 1,000 units
-- Advanced reporting
-- API access
-- Priority support
-- Custom branding
-
-#### **Enterprise Plan (Custom Pricing)**
-- Unlimited buildings/units
-- Dedicated instance option
-- SSO integration
-- Custom development
-- SLA guarantee
-- On-premise deployment
-
-### **Plan Enforcement:**
-```typescript
-// Middleware checks plan limits
-const checkTenantPlanLimit = async (req, res, next) => {
-  const buildingCount = await prisma.building.count({
-    where: { tenantId: req.tenant.tenantId }
-  });
-  
-  const limit = planLimits[req.tenant.tenantPlan];
-  if (buildingCount >= limit) {
-    throw new Error('Plan limit exceeded');
+// Current manager sees CURRENT period only  
+const currentIssues = await prisma.issue.findMany({
+  where: { 
+    buildingId: 'bld-123',
+    managementPeriodId: currentContract.id
   }
-  next();
-};
-```
+});
 
----
-
-## 🏢 Tenant Onboarding Flow
-
-### **Step 1: Sign Up**
-```
-POST /api/tenants/signup
-{
-  "name": "Acme Properties",
-  "subdomain": "acme-properties",
-  "adminEmail": "admin@acme.com",
-  "adminPassword": "secure123",
-  "adminFirstName": "John",
-  "adminLastName": "Doe"
-}
-```
-
-### **Step 2: Automatic Setup**
-1. Creates Tenant record
-2. Creates Admin User
-3. Creates default Building
-4. Sets up trial period (14 days)
-5. Returns JWT token
-
-### **Step 3: First Login**
-1. User logs in with admin credentials
-2. Directed to onboarding wizard
-3. Sets up first building details
-4. Invites team members
-5. Configures notification preferences
-
----
-
-## 🔧 Technical Implementation
-
-### **Prisma Client Extension:**
-```typescript
-// Automatically adds tenantId to all queries
-const tenantPrisma = prisma.$extends({
-  query: {
-    $allModels: {
-      async $allOperations({ model, operation, args, query }) {
-        if (['findMany', 'findUnique', 'findFirst'].includes(operation)) {
-          args.where = { ...args.where, tenantId };
-        }
-        if (operation === 'create') {
-          args.data = { ...args.data, tenantId };
-        }
-        return query(args);
-      }
-    }
+// Previous manager sees THEIR period only (read-only)
+const pastIssues = await prisma.issue.findMany({
+  where: { 
+    buildingId: 'bld-123',
+    managementPeriodId: pastContract.id
   }
 });
 ```
 
-### **Environment Configuration:**
-```env
-# Multi-tenant settings
-TENANT_DEFAULT_PLAN=STARTER
-TENANT_TRIAL_DAYS=14
-TENANT_SUBDOMAIN_PATTERN=/^[a-z0-9-]+$/
+---
 
-# Database (shared for multi-tenant)
-DATABASE_URL=postgresql://user:pass@localhost:5432/building_app
+## 🏢 BUILDING "DIGITAL TWIN" CONCEPT
 
-# Future: Separate databases per tenant
-# DATABASE_URL_PREFIX=postgresql://user:pass@localhost:5432/
+### **Persistent Building Profile:**
+```
+THE URBAN LOFTS (Built: 2010, 60 units)
+├── MANAGEMENT TIMELINE
+│   ├── 2010-2015: Premier Properties
+│   ├── 2015-2020: City Management Group
+│   └── 2020-Present: Acme Property Management
+├── ASSET REGISTRY
+│   ├── HVAC: 3 rooftop units (installed 2015)
+│   ├── Roof: Membrane (replaced 2018)
+│   └── Elevators: 2 Otis (serviced quarterly)
+├── MAINTENANCE HISTORY
+│   ├── 1,247 issues resolved
+│   ├── $485,000 total maintenance spend
+│   └── 92% tenant satisfaction
+└── UNIT DIRECTORY
+    ├── Unit 101: 2BR, 950 sqft
+    │   └── Tenant History (8 tenants since 2010)
+    └── Unit 302: 1BR, 750 sqft
+        └── Current: Maria Rodriguez (since 2023)
+```
+
+### **Value Created:**
+1. **For New Managers:** Instant building intelligence
+2. **For Owners:** Continuous asset tracking across managers
+3. **For Tenants:** Consistent experience during management changes
+4. **For Market:** Building "credit score" based on maintenance history
+
+---
+
+## 🚀 COMMERCIALIZATION STRATEGY
+
+### **Pricing Tiers:**
+1. **Starter** - Up to 5 buildings
+2. **Professional** - Up to 50 buildings  
+3. **Enterprise** - Unlimited buildings
+4. **Custom** - White-label, on-premise options
+
+### **Revenue Streams:**
+1. **Management Subscription** - Per building/month
+2. **Building Data Access** - Fee for new managers onboarding
+3. **Owner Portal** - Separate subscription for building owners
+4. **Data Marketplace** - Historical data for insurance/valuation
+
+### **Competitive Advantages:**
+1. **Reduces Switching Costs** - Managers can easily take over buildings
+2. **Increases Building Value** - Complete maintenance history
+3. **Creates Network Effects** - More buildings = more valuable platform
+4. **Lock-in Prevention** - Data belongs to building, not manager
+
+---
+
+## 🔧 TECHNICAL IMPLEMENTATION
+
+### **API Endpoints:**
+```
+# Building-Centric API
+GET    /api/buildings/:id/history          # Full timeline
+GET    /api/buildings/:id/managers         # Management history
+POST   /api/buildings/:id/transfer         # Transfer management
+GET    /api/buildings/:id/assets           # Asset registry
+GET    /api/buildings/:id/units            # Unit directory
+
+# Management-Centric API  
+GET    /api/management/portfolio           # Current buildings
+GET    /api/management/history             # Past contracts
+POST   /api/management/onboard-building    # Add new building
+
+# Owner-Centric API
+GET    /api/owners/buildings               # All owned buildings
+GET    /api/owners/:id/performance         # Manager comparison
+POST   /api/owners/:id/change-manager      # Initiate transfer
 ```
 
 ### **Migration Strategy:**
 ```sql
--- Add tenantId to existing tables
-ALTER TABLE users ADD COLUMN tenant_id VARCHAR(255);
-ALTER TABLE buildings ADD COLUMN tenant_id VARCHAR(255);
-ALTER TABLE issues ADD COLUMN tenant_id VARCHAR(255);
+-- Phase 1: Add building-centric fields
+ALTER TABLE buildings ADD COLUMN owner_id VARCHAR(255);
+ALTER TABLE buildings ADD COLUMN original_management_date DATE;
 
--- Create tenants table
-CREATE TABLE tenants (
+-- Phase 2: Create management history table
+CREATE TABLE management_history (
   id VARCHAR(255) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  subdomain VARCHAR(100) UNIQUE NOT NULL,
-  plan VARCHAR(50) DEFAULT 'STARTER',
-  status VARCHAR(50) DEFAULT 'ACTIVE',
-  settings JSONB DEFAULT '{}',
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
+  building_id VARCHAR(255) NOT NULL,
+  management_company_id VARCHAR(255) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE,
+  contract_terms JSONB
 );
+
+-- Phase 3: Update existing data with temporal context
 ```
 
 ---
 
-## 📈 Scaling Considerations
+## 🎯 SUCCESS METRICS
 
-### **Phase 1: Shared Database (Now)**
-- Single PostgreSQL database
-- All tenants share tables
-- Row-level isolation via `tenantId`
-- Simple to manage, lower cost
+### **For Building Owners:**
+- **Reduced management transition time** (days → hours)
+- **Improved manager performance comparison** (data-driven)
+- **Increased building valuation** (complete maintenance history)
+- **Lower insurance premiums** (documented preventive maintenance)
 
-### **Phase 2: Database per Tenant (Future)**
-```typescript
-// Dynamic database connections
-function getTenantDatabase(tenantId: string) {
-  const databaseUrl = `${DATABASE_URL_PREFIX}tenant_${tenantId}`;
-  return new PrismaClient({ datasourceUrl: databaseUrl });
-}
-```
+### **For Property Managers:**
+- **Faster building onboarding** (instant historical data)
+- **Better bidding on new contracts** (can demonstrate capability)
+- **Reduced operational risk** (know building issues upfront)
+- **Competitive differentiation** (data-driven management)
 
-### **Phase 3: Hybrid Approach (Enterprise)**
-- Small tenants: Shared database
-- Medium tenants: Database pool
-- Large tenants: Dedicated database
-- Enterprise: On-premise deployment
+### **For Tenants:**
+- **Consistent experience** across management changes
+- **Preserved request history** (no starting over)
+- **Faster issue resolution** (new manager knows building)
+- **Increased satisfaction** (continuity of service)
+
+### **For Platform:**
+- **Reduced churn** (managers don't leave with their data)
+- **Increased stickiness** (building data accumulates value)
+- **Network effects** (more buildings = more valuable)
+- **New revenue streams** (data services, analytics)
 
 ---
 
-## 🛡️ Security & Compliance
+## 🔄 MANAGEMENT TRANSITION WORKFLOW
 
-### **Data Isolation Guarantees:**
-1. **Application Level:** All queries filtered by `tenantId`
-2. **Database Level:** Row-level security (PostgreSQL RLS)
-3. **Network Level:** Tenant-specific database users
-4. **Encryption:** Tenant-specific encryption keys
+### **Scenario:** Management Company A → Company B
 
-### **Compliance Features:**
-- **GDPR:** Data export per tenant
-- **HIPAA:** Audit logging per tenant  
-- **SOC2:** Tenant isolation documentation
-- **ISO27001:** Access controls per tenant
+```
+1. CONTRACT ENDS
+   - Company A: "Read-only" access to their period data
+   - Building: Available for new management
 
-### **Audit Logging:**
-```typescript
-// Log all tenant actions
-const auditLog = {
-  tenantId: req.tenant.tenantId,
-  userId: req.user.userId,
-  action: req.method,
-  resource: req.path,
-  timestamp: new Date(),
-  ipAddress: req.ip,
-  userAgent: req.headers['user-agent']
-};
+2. CONTRACT STARTS
+   - Company B: Onboards building
+   - System: Transfers "active management" flag
+   - Data: Full building history available immediately
+   - Tenants: Seamless transition (same app, new management brand)
+
+3. TENANT EXPERIENCE
+   - App shows: "Management changed to Company B"
+   - All history preserved: "Your past issues still visible"
+   - New reporting: To new management company
+   - Continuity: No re-entering building/unit info
 ```
 
 ---
 
-## 🚀 Deployment & Operations
+## ⚠️ RISKS & MITIGATIONS
 
-### **Development:**
-```bash
-# Single database for all tenants
-docker-compose up -d postgres
-npm run dev
-```
+### **Technical Risks:**
+1. **Migration Complexity** - Existing data needs careful transition
+   - *Mitigation:* Phased migration with data validation at each step
 
-### **Production (Multi-tenant SaaS):**
-```bash
-# Shared infrastructure
-AWS RDS (PostgreSQL) - 1 database
-AWS ECS/EKS - Containerized app
-AWS S3 - Tenant-specific folders
-CloudFront - Tenant subdomains
-```
+2. **Access Control Complexity** - Multiple temporal contexts to manage
+   - *Mitigation:* Comprehensive middleware with clear audit trails
 
-### **Monitoring:**
-```typescript
-// Tenant-aware metrics
-const metrics = {
-  tenantId: req.tenant.tenantId,
-  endpoint: req.path,
-  responseTime: Date.now() - startTime,
-  statusCode: res.statusCode,
-  plan: req.tenant.tenantPlan
-};
+3. **Performance Considerations** - Building history can span decades
+   - *Mitigation:* Partitioned storage, archival strategies
 
-// Send to monitoring system
-sendMetrics(metrics);
-```
+4. **Data Privacy** - Previous tenant data access rules
+   - *Mitigation:* GDPR-compliant data retention policies
+
+### **Business Risks:**
+1. **Adoption Resistance** - Managers may not want to share building data
+   - *Mitigation:* Value proposition focused on reducing their onboarding costs
+
+2. **Legal Complexities** - Data ownership disputes
+   - *Mitigation:* Clear terms of service, data ownership clauses
+
+3. **Market Timing** - Industry may not be ready for this paradigm
+   - *Mitigation:* Start with traditional multi-tenant, evolve to building-centric
 
 ---
 
-## 🔄 Migration Path to Single-Tenant
+## 🚀 NEXT STEPS
 
-### **Option 1: Database Export**
-```sql
--- Export tenant data
-COPY (SELECT * FROM issues WHERE tenant_id = 'tenant-123') 
-TO '/backups/tenant-123-issues.csv';
-```
+### **Immediate (Sprint 3):**
+1. Implement building profile pages with management timeline
+2. Create owner dashboard for multiple buildings/managers
+3. Build management transition workflow UI
+4. Develop tenant notification system for changes
 
-### **Option 2: Containerized Deployment**
-```dockerfile
-# Single-tenant Docker image
-FROM node:18
-COPY --from=builder /app .
-ENV TENANT_ID=client-123
-ENV DATABASE_URL=postgresql://client-123:pass@db:5432/client-123
-CMD ["npm", "start"]
-```
+### **Short-term (Sprint 4-5):**
+1. Asset lifecycle management implementation
+2. Warranty tracking and claim automation
+3. Predictive maintenance based on building history
+4. Insurance integration for claim documentation
 
-### **Option 3: Kubernetes Namespace**
-```yaml
-# Tenant-specific namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: tenant-acme-properties
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: building-app
-  namespace: tenant-acme-properties
-```
+### **Long-term Vision:**
+1. **Industry Standard** - Building data registry
+2. **Marketplace** - Manager performance ratings
+3. **Analytics Platform** - Building performance benchmarking
+4. **Integration Hub** - Connect all building systems
 
 ---
 
-## ✅ Success Metrics
+## ✅ VALIDATION CRITERIA
 
-### **Technical Metrics:**
-- Query performance with 100+ tenants
-- Database connection pooling efficiency
-- Tenant isolation validation (security audits)
-- Migration time from shared to dedicated
+### **Technical Validation:**
+- [ ] All queries properly filter by temporal context
+- [ ] Access control works correctly for all role combinations
+- [ ] Migration scripts handle edge cases
+- [ ] Performance acceptable with decades of history
 
-### **Business Metrics:**
-- Time to onboard new tenant: < 5 minutes
-- Tenant churn rate: < 5% monthly
-- Average revenue per tenant: $500/month
-- Support tickets per tenant: < 2/month
+### **Business Validation:**
+- [ ] Building owners see value in persistent history
+- [ ] Managers appreciate reduced onboarding time
+- [ ] Tenants experience seamless transitions
+- [ ] Platform achieves network effects
 
-### **Operational Metrics:**
-- Uptime: 99.9% SLA
-- Incident response time: < 15 minutes
-- Backup/restore time: < 1 hour
-- Tenant data export time: < 10 minutes
-
----
-
-## 🎯 Next Steps
-
-### **Immediate (Week 1-2):**
-1. ✅ Update database schema with `tenantId`
-2. ✅ Implement tenant middleware
-3. ✅ Create tenant signup flow
-4. ✅ Update existing APIs for tenant context
-
-### **Short-term (Month 1):**
-1. Implement tenant admin dashboard
-2. Add plan enforcement middleware
-3. Create tenant usage analytics
-4. Set up tenant billing system
-
-### **Medium-term (Month 2-3):**
-1. Add tenant-specific customizations
-2. Implement tenant data export
-3. Create super admin portal
-4. Add multi-region support
-
-### **Long-term (Month 4-6):**
-1. Database-per-tenant option
-2. On-premise deployment option
-3. White-label branding
-4. Marketplace for tenant apps
+### **Market Validation:**
+- [ ] Reduces industry friction in management transitions
+- [ ] Creates defensible competitive advantage
+- [ ] Enables new business models (data services)
+- [ ] Attracts both managers and building owners
 
 ---
 
-## 📚 References
+## 🎯 CONCLUSION
 
-### **Prisma Multi-tenancy:**
-- [Prisma Data Guide: Multi-tenancy](https://www.prisma.io/docs/guides/performance-and-optimization/prisma-client-transactions-guide#multi-tenancy)
-- [Row-level Security](https://www.prisma.io/docs/orm/prisma-client/security/row-level-security)
+### **Strategic Impact:**
+This architecture fundamentally changes the platform's value proposition from a **property management tool** to a **building intelligence platform** that serves owners, managers, and tenants across the entire building lifecycle.
 
-### **AWS Multi-tenant SaaS:**
-- [AWS SaaS Factory](https://aws.amazon.com/solutions/implementations/saas-factory/)
-- [SaaS Storage Strategies](https://d1.awsstatic.com/whitepapers/saas-storage-strategies.pdf)
+### **Key Differentiators:**
+1. **Building as Permanent Entity** - Data survives management changes
+2. **Temporal Context Awareness** - Knows "when" things happened
+3. **Accumulated Intelligence** - Building gets smarter over time
+4. **Reduced Industry Friction** - Easier management transitions
 
-### **Security Best Practices:**
-- [OWASP SaaS Security](https://owasp.org/www-project-saas-security/)
-- [NIST Cloud Security](https://csrc.nist.gov/projects/cloud-computing)
+### **Investment Protection:**
+By building for this paradigm from day one, we avoid costly rewrites later and create a platform that can scale to become an industry standard for building intelligence.
 
 ---
 
 **Last Updated:** February 16, 2026  
-**Architecture Version:** 1.0 (Multi-tenant Foundation)  
-**Next Review:** Sprint 3 Planning (February 20, 2026)
+**Architecture Version:** 2.0 (Building-Centric)  
+**Status:** ✅ **Implemented in Prisma Schema**  
+**Next:** Update API middleware and authentication

@@ -11,60 +11,14 @@ datasource db {
 }
 
 // ======================
-// MULTI-TENANT CORE MODELS
+// BUILDING-CENTRIC ARCHITECTURE
+// Buildings are permanent, management is temporal
 // ======================
 
-// Tenant/Organization model - represents property management companies
-model Tenant {
-  id            String    @id @default(cuid())
-  name          String
-  subdomain     String    @unique  // e.g., "acme-properties"
-  plan          TenantPlan @default(STARTER)
-  status        TenantStatus @default(ACTIVE)
-  settings      Json      @default("{}") // Tenant-specific settings
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  users         User[]
-  buildings     Building[]
-  issues        Issue[]
-  workOrders    WorkOrder[]
-  
-  @@index([subdomain])
-  @@index([status])
-}
-
-// User model - represents tenants, building managers, maintenance staff
-model User {
-  id            String    @id @default(cuid())
-  email         String
-  firstName     String
-  lastName      String
-  phone         String?
-  role          UserRole  @default(TENANT)
-  buildingId    String?
-  apartment     String?
-  tenantId      String    // Multi-tenant: which organization user belongs to
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
-  building      Building? @relation(fields: [buildingId], references: [id])
-  submittedIssues Issue[] @relation("SubmittedBy")
-  assignedWorkOrders WorkOrder[] @relation("AssignedTo")
-  
-  // Composite unique constraint: email must be unique within tenant
-  @@unique([email, tenantId])
-  @@index([email])
-  @@index([buildingId])
-  @@index([tenantId])
-}
-
-// Building model - represents physical buildings
+// Building model - FIRST-CLASS CITIZEN (persists across management changes)
 model Building {
   id            String    @id @default(cuid())
+  // PHYSICAL ATTRIBUTES (never change)
   name          String
   address       String
   city          String
@@ -72,26 +26,155 @@ model Building {
   zipCode       String
   yearBuilt     Int?
   floors        Int?
-  units         Int?
-  managerId     String?
-  tenantId      String    // Multi-tenant: which organization owns this building
+  totalUnits    Int?
+  ownerId       String?   // Building owner (different from manager)
+  
+  // ASSET REGISTRY (belongs to building permanently)
+  assets        Asset[]
+  
+  // UNIT DIRECTORY (physical spaces in building)
+  units         Unit[]
+  
+  // MAINTENANCE HISTORY (building timeline)
+  issues        Issue[]
+  workOrders    WorkOrder[]
+  
+  // MANAGEMENT TIMELINE
+  managementHistory ManagementContract[]
+  currentManagementId String?  // Current management company
+  currentManagement ManagementCompany? @relation(fields: [currentManagementId], references: [id])
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Building address should be unique globally
+  @@unique([address, city, state, zipCode])
+  @@index([ownerId])
+  @@index([currentManagementId])
+}
+
+// Management Company (formerly Tenant) - temporal relationship to buildings
+model ManagementCompany {
+  id            String    @id @default(cuid())
+  name          String
+  subdomain     String    @unique  // e.g., "acme-properties"
+  plan          TenantPlan @default(STARTER)
+  status        TenantStatus @default(ACTIVE)
+  settings      Json      @default("{}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // CURRENT PORTFOLIO (buildings they currently manage)
+  buildings     Building[]
+  
+  // CONTRACT HISTORY
+  contracts     ManagementContract[]
+  
+  // USERS (employees of management company)
+  users         User[]
+  
+  @@index([subdomain])
+  @@index([status])
+}
+
+// Management Contract - temporal relationship between building and manager
+model ManagementContract {
+  id            String    @id @default(cuid())
+  buildingId    String
+  managementCompanyId String
+  startDate     DateTime
+  endDate       DateTime?
+  status        ContractStatus @default(ACTIVE)
+  terms         Json      // Contract details, SLA, etc.
+  
+  building      Building  @relation(fields: [buildingId], references: [id])
+  managementCompany ManagementCompany @relation(fields: [managementCompanyId], references: [id])
+  
+  // A building can have only one active management contract at a time
+  @@unique([buildingId, status], map: "building_active_contract")
+  @@index([managementCompanyId])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+// User model - represents people in the system
+model User {
+  id            String    @id @default(cuid())
+  email         String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole  @default(TENANT)
+  
+  // TENANT-SPECIFIC FIELDS (if user is a tenant)
+  unitId        String?   // Which unit they occupy
+  leaseStart    DateTime?
+  leaseEnd      DateTime?
+  
+  // EMPLOYEE-SPECIFIC FIELDS (if user works for management company)
+  managementCompanyId String?  // Which company employs them
+  employeeId    String?   // Employee ID within company
+  position      String?   // Job title
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
   // Relations
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
-  manager       User?     @relation(fields: [managerId], references: [id])
-  users         User[]
-  issues        Issue[]
-  workOrders    WorkOrder[]
+  unit          Unit?     @relation(fields: [unitId], references: [id])
+  managementCompany ManagementCompany? @relation(fields: [managementCompanyId], references: [id])
+  submittedIssues Issue[] @relation("SubmittedBy")
+  assignedWorkOrders WorkOrder[] @relation("AssignedTo")
+  tenantHistory TenantHistory[]  // History of where they lived
   
-  // Building name must be unique within tenant
-  @@unique([name, tenantId])
-  @@index([managerId])
-  @@index([tenantId])
+  // Email must be unique globally (single sign-on across buildings/companies)
+  @@unique([email])
+  @@index([unitId])
+  @@index([managementCompanyId])
 }
 
-// Issue model - represents maintenance requests from tenants
+// Unit model - physical space within a building
+model Unit {
+  id            String    @id @default(cuid())
+  buildingId    String
+  unitNumber    String    // "302", "A1", "Penthouse"
+  type          UnitType  // "Apartment", "Office", "Retail"
+  squareFeet    Int?
+  bedrooms      Int?
+  bathrooms     Int?
+  
+  // PHYSICAL ASSETS IN UNIT
+  assets        Asset[]
+  
+  // TENANT HISTORY (who lived here when)
+  tenantHistory TenantHistory[]
+  currentTenantId String?  // Current occupant
+  currentTenant User? @relation(fields: [currentTenantId], references: [id])
+  
+  building      Building  @relation(fields: [buildingId], references: [id])
+  
+  // Unit number must be unique within building
+  @@unique([buildingId, unitNumber])
+  @@index([currentTenantId])
+}
+
+// Tenant History - temporal relationship between user and unit
+model TenantHistory {
+  id            String    @id @default(cuid())
+  unitId        String
+  userId        String
+  moveInDate    DateTime
+  moveOutDate   DateTime?
+  leaseTerms    Json      // Lease details, rent, etc.
+  
+  unit          Unit      @relation(fields: [unitId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  
+  @@unique([unitId, userId, moveInDate])
+  @@index([unitId, moveInDate])
+  @@index([userId, moveInDate])
+}
+
+// Issue model - represents maintenance requests
 model Issue {
   id            String    @id @default(cuid())
   title         String
@@ -100,10 +183,16 @@ model Issue {
   priority      IssuePriority @default(MEDIUM)
   status        IssueStatus @default(PENDING)
   location      String?   // e.g., "Apartment 302", "Lobby", "Parking lot"
+  
+  // BUILDING-CENTRIC (permanent)
   buildingId    String
-  submittedById String
-  assignedToId  String?
-  tenantId      String    // Multi-tenant: which organization this issue belongs to
+  unitId        String?   // If issue is in specific unit
+  
+  // TEMPORAL CONTEXT (when this happened)
+  submittedById String    // Who reported it
+  assignedToId  String?   // Who was assigned
+  managementPeriodId String? // Which management period handled it
+  
   estimatedCost Decimal?  @db.Decimal(10, 2)
   actualCost    Decimal?  @db.Decimal(10, 2)
   scheduledDate DateTime?
@@ -112,21 +201,23 @@ model Issue {
   updatedAt     DateTime  @updatedAt
   
   // Relations
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
   building      Building  @relation(fields: [buildingId], references: [id])
+  unit          Unit?     @relation(fields: [unitId], references: [id])
   submittedBy   User      @relation("SubmittedBy", fields: [submittedById], references: [id])
   assignedTo    User?     @relation(fields: [assignedToId], references: [id])
+  managementPeriod ManagementContract? @relation(fields: [managementPeriodId], references: [id])
   workOrders    WorkOrder[]
   attachments   Attachment[]
   comments      Comment[]
   
   @@index([buildingId])
+  @@index([unitId])
   @@index([submittedById])
   @@index([assignedToId])
+  @@index([managementPeriodId])
   @@index([status])
   @@index([priority])
   @@index([category])
-  @@index([tenantId])
 }
 
 // WorkOrder model - represents maintenance work to be done
@@ -135,9 +226,15 @@ model WorkOrder {
   title         String
   description   String
   issueId       String?
+  
+  // BUILDING-CENTRIC (permanent)
   buildingId    String
+  unitId        String?   // If work is in specific unit
+  
+  // TEMPORAL CONTEXT
   assignedToId  String?
-  tenantId      String    // Multi-tenant: which organization this work order belongs to
+  managementPeriodId String? // Which management period handled it
+  
   status        WorkOrderStatus @default(PENDING)
   priority      WorkOrderPriority @default(MEDIUM)
   scheduledDate DateTime?
@@ -152,19 +249,21 @@ model WorkOrder {
   updatedAt     DateTime  @updatedAt
   
   // Relations
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
   issue         Issue?    @relation(fields: [issueId], references: [id])
   building      Building  @relation(fields: [buildingId], references: [id])
+  unit          Unit?     @relation(fields: [unitId], references: [id])
   assignedTo    User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+  managementPeriod ManagementContract? @relation(fields: [managementPeriodId], references: [id])
   attachments   Attachment[]
   comments      Comment[]
   
   @@index([buildingId])
+  @@index([unitId])
   @@index([assignedToId])
   @@index([issueId])
+  @@index([managementPeriodId])
   @@index([status])
   @@index([priority])
-  @@index([tenantId])
 }
 
 // Attachment model - for photos, documents, etc.
@@ -211,18 +310,19 @@ model Comment {
 
 // Enums
 enum UserRole {
-  TENANT
-  MANAGER
-  MAINTENANCE
-  ADMIN
-  SUPER_ADMIN  // Platform admin (can access all tenants)
+  TENANT        // Building occupant
+  MAINTENANCE   // Maintenance technician
+  MANAGER       // Property manager
+  ADMIN         // Management company admin
+  SUPER_ADMIN   // Platform admin
+  BUILDING_OWNER // Building owner (different from manager)
 }
 
-// Multi-tenant specific enums
+// Management Company Plans
 enum TenantPlan {
-  STARTER      // Up to 100 units
-  PROFESSIONAL // Up to 1,000 units
-  ENTERPRISE   // Unlimited units
+  STARTER      // Up to 5 buildings
+  PROFESSIONAL // Up to 50 buildings
+  ENTERPRISE   // Unlimited buildings
   CUSTOM       // Custom pricing
 }
 
@@ -232,6 +332,50 @@ enum TenantStatus {
   SUSPENDED    // Payment overdue
   CANCELLED    // Cancelled subscription
   ARCHIVED     // Data kept but no access
+}
+
+// Contract Status
+enum ContractStatus {
+  ACTIVE
+  PENDING      // Signed but not started
+  ENDED        // Completed normally
+  TERMINATED   // Ended early
+  RENEWED      // Auto-renewed
+}
+
+// Unit Types
+enum UnitType {
+  APARTMENT
+  CONDOMINIUM
+  OFFICE
+  RETAIL
+  STORAGE
+  COMMON_AREA  // Lobby, hallway, etc.
+  PARKING
+  OTHER
+}
+
+// Asset Types
+enum AssetType {
+  HVAC
+  PLUMBING
+  ELECTRICAL
+  APPLIANCE
+  ROOFING
+  ELEVATOR
+  SECURITY
+  FIRE_SAFETY
+  STRUCTURAL
+  OTHER
+}
+
+// Asset Status
+enum AssetStatus {
+  OPERATIONAL
+  NEEDS_MAINTENANCE
+  NEEDS_REPAIR
+  NEEDS_REPLACEMENT
+  DECOMMISSIONED
 }
 
 enum IssueCategory {
@@ -276,4 +420,158 @@ enum WorkOrderPriority {
   MEDIUM
   HIGH
   URGENT
+}
+
+// Asset Model - Physical assets in buildings/units
+model Asset {
+  id            String    @id @default(cuid())
+  
+  // IDENTITY
+  name          String
+  type          AssetType
+  manufacturer  String?
+  model         String?
+  serialNumber  String?
+  
+  // LOCATION (belongs to building permanently)
+  buildingId    String
+  unitId        String?   // If asset is in specific unit
+  
+  // INSTALLATION
+  installationDate DateTime
+  installer      String?   // Company/person who installed
+  warrantyMonths Int?      // Warranty duration in months
+  
+  // STATUS & MAINTENANCE
+  status        AssetStatus @default(OPERATIONAL)
+  expectedLifespanMonths Int?  // Expected lifespan
+  lastMaintenanceDate DateTime?
+  nextMaintenanceDate DateTime?
+  
+  // FINANCIAL
+  purchasePrice Decimal?  @db.Decimal(10, 2)
+  currentValue  Decimal?  @db.Decimal(10, 2)
+  replacementCost Decimal? @db.Decimal(10, 2)
+  
+  // WARRANTY INFORMATION
+  warrantyProvider String?
+  warrantyContact  String?
+  warrantyNotes    String?
+  
+  // MAINTENANCE HISTORY
+  maintenanceHistory MaintenanceRecord[]
+  repairHistory   RepairRecord[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  building      Building  @relation(fields: [buildingId], references: [id])
+  unit          Unit?     @relation(fields: [unitId], references: [id])
+  
+  @@unique([buildingId, serialNumber], map: "asset_serial_unique")
+  @@index([buildingId])
+  @@index([unitId])
+  @@index([type])
+  @@index([status])
+  @@index([nextMaintenanceDate])
+}
+
+// Maintenance Record - Scheduled maintenance on assets
+model MaintenanceRecord {
+  id            String    @id @default(cuid())
+  assetId       String
+  date          DateTime
+  type          String    // "Preventive", "Inspection", "Cleaning"
+  performedBy   String    // Technician/company
+  notes         String?
+  cost          Decimal?  @db.Decimal(10, 2)
+  
+  asset         Asset     @relation(fields: [assetId], references: [id])
+  
+  @@index([assetId])
+  @@index([date])
+}
+
+// Repair Record - Repairs performed on assets
+model RepairRecord {
+  id            String    @id @default(cuid())
+  assetId       String
+  date          DateTime
+  description   String
+  performedBy   String    // Technician/company
+  partsUsed     String?
+  warrantyCovered Boolean @default(false)
+  cost          Decimal?  @db.Decimal(10, 2)
+  
+  asset         Asset     @relation(fields: [assetId], references: [id])
+  
+  @@index([assetId])
+  @@index([date])
+}// Attachment model - represents files/photos
+model Attachment {
+  id            String    @id @default(cuid())
+  filename      String
+  fileType      String    // e.g., "image/jpeg", "application/pdf"
+  fileSize      Int       // in bytes
+  url           String    // S3 URL or file path
+  
+  // CONTEXT (what this attachment is attached to)
+  issueId       String?
+  workOrderId   String?
+  assetId       String?   // Asset documentation
+  unitId        String?   // Unit photos
+  
+  // UPLOAD CONTEXT
+  uploadedById  String
+  buildingId    String    // For access control
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  issue         Issue?    @relation(fields: [issueId], references: [id])
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
+  asset         Asset?    @relation(fields: [assetId], references: [id])
+  unit          Unit?     @relation(fields: [unitId], references: [id])
+  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
+  building      Building  @relation(fields: [buildingId], references: [id])
+  
+  @@index([issueId])
+  @@index([workOrderId])
+  @@index([assetId])
+  @@index([unitId])
+  @@index([uploadedById])
+  @@index([buildingId])
+}
+
+// Comment model - represents discussions
+model Comment {
+  id            String    @id @default(cuid())
+  content       String
+  
+  // CONTEXT (what this comment is attached to)
+  issueId       String?
+  workOrderId   String?
+  assetId       String?   // Asset notes
+  
+  // AUTHOR CONTEXT
+  authorId      String
+  buildingId    String    // For access control
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  issue         Issue?    @relation(fields: [issueId], references: [id])
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
+  asset         Asset?    @relation(fields: [assetId], references: [id])
+  author        User      @relation(fields: [authorId], references: [id])
+  building      Building  @relation(fields: [buildingId], references: [id])
+  
+  @@index([issueId])
+  @@index([workOrderId])
+  @@index([assetId])
+  @@index([authorId])
+  @@index([buildingId])
 }
