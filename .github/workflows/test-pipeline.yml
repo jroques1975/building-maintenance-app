@@ -1,0 +1,299 @@
+name: Test Pipeline
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  test-setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Verify project structure
+      run: |
+        echo "📁 Project Structure Verification"
+        echo "================================"
+        
+        # Check essential files
+        essential_files=(
+          "package.json"
+          "docker-compose.yml"
+          ".github/workflows/ci.yml"
+          "packages/backend/package.json"
+          "packages/web/package.json"
+          "packages/mobile/package.json"
+          "packages/shared/package.json"
+          "packages/backend/prisma/schema.prisma"
+        )
+        
+        for file in "${essential_files[@]}"; do
+          if [ -f "$file" ]; then
+            echo "✅ $file exists"
+          else
+            echo "❌ $file missing"
+          fi
+        done
+        
+        echo ""
+        echo "📦 Package Verification"
+        echo "======================"
+        
+        # Check package.json files
+        packages=("backend" "web" "mobile" "shared")
+        for pkg in "${packages[@]}"; do
+          if [ -f "packages/$pkg/package.json" ]; then
+            echo "📦 $pkg package.json: OK"
+          else
+            echo "❌ $pkg package.json: MISSING"
+          fi
+        done
+
+  test-docker-compose:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+    
+    - name: Validate Docker Compose configuration
+      run: |
+        echo "🔧 Validating Docker Compose configuration..."
+        docker-compose -f docker-compose.yml config
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Docker Compose configuration is valid"
+        else
+          echo "❌ Docker Compose configuration has errors"
+          exit 1
+        fi
+    
+    - name: Test Docker build
+      run: |
+        echo "🏗️  Testing Docker builds..."
+        
+        # Test backend Docker build
+        echo "Building backend image..."
+        cd packages/backend
+        docker build -t backend-test .
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Backend Docker build successful"
+        else
+          echo "❌ Backend Docker build failed"
+          exit 1
+        fi
+        
+        # Test web Docker build
+        echo "Building web image..."
+        cd ../web
+        docker build -t web-test .
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Web Docker build successful"
+        else
+          echo "❌ Web Docker build failed"
+          exit 1
+        fi
+
+  test-prisma:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install backend dependencies
+      working-directory: ./packages/backend
+      run: npm ci
+    
+    - name: Test Prisma schema
+      working-directory: ./packages/backend
+      env:
+        DATABASE_URL: 'postgresql://test_user:test_password@localhost:5432/test_db'
+      run: |
+        echo "🔍 Testing Prisma schema..."
+        
+        # Generate Prisma client
+        npx prisma generate
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Prisma client generated successfully"
+        else
+          echo "❌ Prisma client generation failed"
+          exit 1
+        fi
+        
+        # Validate schema
+        npx prisma validate
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Prisma schema is valid"
+        else
+          echo "❌ Prisma schema validation failed"
+          exit 1
+        fi
+        
+        # Test database connection and migration
+        echo "Testing database migration..."
+        npx prisma migrate dev --name test --skip-generate --skip-seed
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Database migration successful"
+        else
+          echo "❌ Database migration failed"
+          exit 1
+        fi
+
+  test-api-health:
+    runs-on: ubuntu-latest
+    needs: test-prisma
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install backend dependencies
+      working-directory: ./packages/backend
+      run: npm ci
+    
+    - name: Generate Prisma client
+      working-directory: ./packages/backend
+      env:
+        DATABASE_URL: 'postgresql://test_user:test_password@localhost:5432/test_db'
+      run: npx prisma generate
+    
+    - name: Run database migration
+      working-directory: ./packages/backend
+      env:
+        DATABASE_URL: 'postgresql://test_user:test_password@localhost:5432/test_db'
+      run: npx prisma migrate dev --name test --skip-generate
+    
+    - name: Build backend
+      working-directory: ./packages/backend
+      run: npm run build
+    
+    - name: Start backend server
+      working-directory: ./packages/backend
+      env:
+        DATABASE_URL: 'postgresql://test_user:test_password@localhost:5432/test_db'
+        NODE_ENV: test
+        JWT_SECRET: test-secret
+        PORT: 3001
+      run: |
+        # Start server in background
+        npm run start &
+        SERVER_PID=$!
+        
+        # Wait for server to start
+        sleep 10
+        
+        # Test health endpoint
+        echo "🌡️  Testing API health endpoint..."
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health || echo "000")
+        
+        if [ "$RESPONSE" = "200" ]; then
+          echo "✅ API health endpoint returned HTTP 200"
+          
+          # Get health details
+          curl -s http://localhost:3001/api/health | jq .
+        else
+          echo "❌ API health endpoint returned HTTP $RESPONSE"
+          exit 1
+        fi
+        
+        # Test database health endpoint
+        echo "🗄️  Testing database health endpoint..."
+        DB_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health/database || echo "000")
+        
+        if [ "$DB_RESPONSE" = "200" ]; then
+          echo "✅ Database health endpoint returned HTTP 200"
+        else
+          echo "❌ Database health endpoint returned HTTP $DB_RESPONSE"
+          exit 1
+        fi
+        
+        # Kill server
+        kill $SERVER_PID
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [test-setup, test-docker-compose, test-api-health]
+    if: always()
+    
+    steps:
+    - name: Generate test summary
+      run: |
+        echo "# Pipeline Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Test Status" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Project Structure | ${{ needs.test-setup.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Docker Compose | ${{ needs.test-docker-compose.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| API Health | ${{ needs.test-api-health.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ needs.test-setup.result }}" == "success" && "${{ needs.test-docker-compose.result }}" == "success" && "${{ needs.test-api-health.result }}" == "success" ]]; then
+          echo "🎉 All pipeline tests passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The CI/CD pipeline is ready for use. You can:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Push to main/develop branches to trigger automated builds" >> $GITHUB_STEP_SUMMARY
+          echo "2. Create pull requests to run tests automatically" >> $GITHUB_STEP_SUMMARY
+          echo "3. Use the enhanced CI pipeline for comprehensive testing" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Some tests failed. Please review the logs above." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the following:" >> $GITHUB_STEP_SUMMARY
+          echo "- Project structure and essential files" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker configuration and builds" >> $GITHUB_STEP_SUMMARY
+          echo "- Database connectivity and API health" >> $GITHUB_STEP_SUMMARY
+        fi

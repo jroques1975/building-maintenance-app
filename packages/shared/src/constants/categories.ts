@@ -1,0 +1,32 @@
+export const ISSUE_CATEGORIES = [
+  'Plumbing',
+  'Electrical',
+  'HVAC',
+  'Appliances',
+  'Structural',
+  'Pest Control',
+  'Safety',
+  'Cleaning',
+  'Landscaping',
+  'Parking',
+  'Elevator',
+  'Security',
+  'Other',
+] as const;
+
+export const EQUIPMENT_TYPES = [
+  'HVAC System',
+  'Water Heater',
+  'Boiler',
+  'Elevator',
+  'Fire Alarm',
+  'Security System',
+  'Plumbing System',
+  'Electrical Panel',
+  'Roof',
+  'Exterior',
+  'Parking Garage',
+  'Pool Equipment',
+  'Gym Equipment',
+  'Other',
+] as const;

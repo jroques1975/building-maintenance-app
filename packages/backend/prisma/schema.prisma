@@ -1,0 +1,279 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ======================
+// MULTI-TENANT CORE MODELS
+// ======================
+
+// Tenant/Organization model - represents property management companies
+model Tenant {
+  id            String    @id @default(cuid())
+  name          String
+  subdomain     String    @unique  // e.g., "acme-properties"
+  plan          TenantPlan @default(STARTER)
+  status        TenantStatus @default(ACTIVE)
+  settings      Json      @default("{}") // Tenant-specific settings
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  users         User[]
+  buildings     Building[]
+  issues        Issue[]
+  workOrders    WorkOrder[]
+  
+  @@index([subdomain])
+  @@index([status])
+}
+
+// User model - represents tenants, building managers, maintenance staff
+model User {
+  id            String    @id @default(cuid())
+  email         String
+  firstName     String
+  lastName      String
+  phone         String?
+  role          UserRole  @default(TENANT)
+  buildingId    String?
+  apartment     String?
+  tenantId      String    // Multi-tenant: which organization user belongs to
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  building      Building? @relation(fields: [buildingId], references: [id])
+  submittedIssues Issue[] @relation("SubmittedBy")
+  assignedWorkOrders WorkOrder[] @relation("AssignedTo")
+  
+  // Composite unique constraint: email must be unique within tenant
+  @@unique([email, tenantId])
+  @@index([email])
+  @@index([buildingId])
+  @@index([tenantId])
+}
+
+// Building model - represents physical buildings
+model Building {
+  id            String    @id @default(cuid())
+  name          String
+  address       String
+  city          String
+  state         String
+  zipCode       String
+  yearBuilt     Int?
+  floors        Int?
+  units         Int?
+  managerId     String?
+  tenantId      String    // Multi-tenant: which organization owns this building
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  manager       User?     @relation(fields: [managerId], references: [id])
+  users         User[]
+  issues        Issue[]
+  workOrders    WorkOrder[]
+  
+  // Building name must be unique within tenant
+  @@unique([name, tenantId])
+  @@index([managerId])
+  @@index([tenantId])
+}
+
+// Issue model - represents maintenance requests from tenants
+model Issue {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  category      IssueCategory
+  priority      IssuePriority @default(MEDIUM)
+  status        IssueStatus @default(PENDING)
+  location      String?   // e.g., "Apartment 302", "Lobby", "Parking lot"
+  buildingId    String
+  submittedById String
+  assignedToId  String?
+  tenantId      String    // Multi-tenant: which organization this issue belongs to
+  estimatedCost Decimal?  @db.Decimal(10, 2)
+  actualCost    Decimal?  @db.Decimal(10, 2)
+  scheduledDate DateTime?
+  completedDate DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  building      Building  @relation(fields: [buildingId], references: [id])
+  submittedBy   User      @relation("SubmittedBy", fields: [submittedById], references: [id])
+  assignedTo    User?     @relation(fields: [assignedToId], references: [id])
+  workOrders    WorkOrder[]
+  attachments   Attachment[]
+  comments      Comment[]
+  
+  @@index([buildingId])
+  @@index([submittedById])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([tenantId])
+}
+
+// WorkOrder model - represents maintenance work to be done
+model WorkOrder {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  issueId       String?
+  buildingId    String
+  assignedToId  String?
+  tenantId      String    // Multi-tenant: which organization this work order belongs to
+  status        WorkOrderStatus @default(PENDING)
+  priority      WorkOrderPriority @default(MEDIUM)
+  scheduledDate DateTime?
+  startDate     DateTime?
+  completedDate DateTime?
+  estimatedHours Decimal? @db.Decimal(5, 2)
+  actualHours   Decimal?  @db.Decimal(5, 2)
+  estimatedCost Decimal?  @db.Decimal(10, 2)
+  actualCost    Decimal?  @db.Decimal(10, 2)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  issue         Issue?    @relation(fields: [issueId], references: [id])
+  building      Building  @relation(fields: [buildingId], references: [id])
+  assignedTo    User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
+  attachments   Attachment[]
+  comments      Comment[]
+  
+  @@index([buildingId])
+  @@index([assignedToId])
+  @@index([issueId])
+  @@index([status])
+  @@index([priority])
+  @@index([tenantId])
+}
+
+// Attachment model - for photos, documents, etc.
+model Attachment {
+  id            String    @id @default(cuid())
+  filename      String
+  url           String
+  mimeType      String
+  size          Int       // in bytes
+  issueId       String?
+  workOrderId   String?
+  uploadedById  String
+  createdAt     DateTime  @default(now())
+  
+  // Relations
+  issue         Issue?    @relation(fields: [issueId], references: [id])
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
+  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
+  
+  @@index([issueId])
+  @@index([workOrderId])
+  @@index([uploadedById])
+}
+
+// Comment model - for discussions on issues/work orders
+model Comment {
+  id            String    @id @default(cuid())
+  content       String
+  issueId       String?
+  workOrderId   String?
+  authorId      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  issue         Issue?    @relation(fields: [issueId], references: [id])
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
+  author        User      @relation(fields: [authorId], references: [id])
+  
+  @@index([issueId])
+  @@index([workOrderId])
+  @@index([authorId])
+}
+
+// Enums
+enum UserRole {
+  TENANT
+  MANAGER
+  MAINTENANCE
+  ADMIN
+  SUPER_ADMIN  // Platform admin (can access all tenants)
+}
+
+// Multi-tenant specific enums
+enum TenantPlan {
+  STARTER      // Up to 100 units
+  PROFESSIONAL // Up to 1,000 units
+  ENTERPRISE   // Unlimited units
+  CUSTOM       // Custom pricing
+}
+
+enum TenantStatus {
+  ACTIVE
+  TRIAL        // 14-day free trial
+  SUSPENDED    // Payment overdue
+  CANCELLED    // Cancelled subscription
+  ARCHIVED     // Data kept but no access
+}
+
+enum IssueCategory {
+  PLUMBING
+  ELECTRICAL
+  HVAC
+  APPLIANCE
+  STRUCTURAL
+  SECURITY
+  CLEANING
+  PEST_CONTROL
+  OTHER
+}
+
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum IssueStatus {
+  PENDING
+  IN_REVIEW
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}

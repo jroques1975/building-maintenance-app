@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building Maintenance App - Persona Cards</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .personas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        
+        .persona-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .persona-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }
+        
+        .persona-header {
+            padding: 30px;
+            color: white;
+            position: relative;
+        }
+        
+        .persona-1 .persona-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .persona-2 .persona-header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .persona-3 .persona-header { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .persona-4 .persona-header { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        .persona-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .persona-name {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .persona-role {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 15px;
+        }
+        
+        .persona-quote {
+            font-style: italic;
+            font-size: 1.1rem;
+            opacity: 0.95;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .persona-content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            font-size: 1.2rem;
+        }
+        
+        .section-content {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .tag {
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        .goals-list, .frustrations-list {
+            list-style: none;
+        }
+        
+        .goals-list li, .frustrations-list li {
+            padding: 5px 0;
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .goals-list li:before {
+            content: "✓";
+            color: #4CAF50;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        
+        .frustrations-list li:before {
+            content: "✗";
+            color: #f44336;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+        
+        .scenario {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .personas-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 Building Maintenance App</h1>
+            <p>User Persona Cards - Designed to guide feature development and user experience decisions</p>
+        </div>
+        
+        <div class="personas-grid">
+            <!-- Persona 1: The Tenant -->
+            <div class="persona-card persona-1">
+                <div class="persona-header">
+                    <div class="persona-icon">🏠</div>
+                    <div class="persona-name">Maria Rodriguez</div>
+                    <div class="persona-role">The Tenant • Apartment 302</div>
+                    <div class="persona-quote">"I just want my leaky faucet fixed without having to call the office 5 times."</div>
+                </div>
+                <div class="persona-content">
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-user"></i> Demographics</div>
+                        <div class="section-content">
+                            <p><strong>Age:</strong> 32 • <strong>Occupation:</strong> Software Engineer<br>
+                            <strong>Tech Comfort:</strong> High • <strong>Building:</strong> 200-unit luxury apartment</p>
+                            <div class="tags">
+                                <span class="tag">Mobile-First User</span>
+                                <span class="tag">Real-Time Updates</span>
+                                <span class="tag">Photo Documentation</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-bullseye"></i> Goals</div>
+                        <div class="section-content">
+                            <ul class="goals-list">
+                                <li>Report issues quickly with photos</li>
+                                <li>Track repair status in real-time</li>
+                                <li>Schedule around work hours</li>
+                                <li>Receive automatic notifications</li>
+                                <li>Access repair history</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-exclamation-triangle"></i> Frustrations</div>
+                        <div class="section-content">
+                            <ul class="frustrations-list">
+                                <li>Office calls during business hours only</li>
+                                <li>No updates on repair status</li>
+                                <li>Must be home for maintenance visits</li>
+                                <li>Lost paper work orders</li>
+                                <li>Language barriers with staff</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-scroll"></i> Typical Scenario</div>
+                        <div class="section-content">
+                            <div class="scenario">
+                                Maria notices a leak under her kitchen sink on Sunday evening. She takes a photo, submits it through the app, and receives an automated confirmation. On Monday, she gets a notification that maintenance will come between 2-4 PM. She approves remotely and receives completion photos.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Persona 2: The Building Manager -->
+            <div class="persona-card persona-2">
+                <div class="persona-header">
+                    <div class="persona-icon">🏢</div>
+                    <div class="persona-name">Robert Chen</div>
+                    <div class="persona-role">Building Manager • 3 Properties</div>
+                    <div class="persona-quote">"I need to know what's happening across all my buildings at a glance."</div>
+                </div>
+                <div class="persona-content">
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-user"></i> Demographics</div>
+                        <div class="section-content">
+                            <p><strong>Age:</strong> 45 • <strong>Occupation:</strong> Property Manager<br>
+                            <strong>Tech Comfort:</strong> Medium • <strong>Experience:</strong> 15 years</p>
+                            <div class="tags">
+                                <span class="tag">Desktop Dashboard</span>
+                                <span class="tag">Multi-Building View</span>
+                                <span class="tag">Cost Tracking</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-bullseye"></i> Goals</div>
+                        <div class="section-content">
+                            <ul class="goals-list">
+                                <li>Centralized view of all requests</li>
+                                <li>Prioritize urgent issues automatically</li>
+                                <li>Assign work to appropriate staff</li>
+                                <li>Track repair costs and timelines</li>
+                                <li>Generate reports for owners</li>
+                                <li>Reduce tenant complaints</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-exclamation-triangle"></i> Frustrations</div>
+                        <div class="section-content">
+                            <ul class="frustrations-list">
+                                <li>Paper work orders getting lost</li>
+                                <li>Tenants calling repeatedly for updates</li>
+                                <li>Emergency issues not flagged properly</li>
+                                <li>Difficulty tracking maintenance staff</li>
+                                <li>No historical data on recurring issues</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-scroll"></i> Typical Scenario</div>
+                        <div class="section-content">
+                            <div class="scenario">
+                                Robert starts his day checking the dashboard. He sees 12 new issues overnight, with 2 flagged as urgent. He assigns the AC outage to HVAC specialist and water leak to plumber. He monitors real-time updates and automatically sends status updates to tenants.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Persona 3: The Maintenance Technician -->
+            <div class="persona-card persona-3">
+                <div class="persona-header">
+                    <div class="persona-icon">🔧</div>
+                    <div class="persona-name">James "Jim" Wilson</div>
+                    <div class="persona-role">Maintenance Supervisor • 5 Buildings</div>
+                    <div class="persona-quote">"Just tell me what needs fixing and where. I'll get it done."</div>
+                </div>
+                <div class="persona-content">
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-user"></i> Demographics</div>
+                        <div class="section-content">
+                            <p><strong>Age:</strong> 52 • <strong>Occupation:</strong> Maintenance Supervisor<br>
+                            <strong>Tech Comfort:</strong> Low-Medium • <strong>Experience:</strong> 30 years</p>
+                            <div class="tags">
+                                <span class="tag">Mobile Field Use</span>
+                                <span class="tag">Offline Capability</span>
+                                <span class="tag">Photo Documentation</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-bullseye"></i> Goals</div>
+                        <div class="section-content">
+                            <ul class="goals-list">
+                                <li>Clear instructions for each job</li>
+                                <li>Access to building schematics</li>
+                                <li>Ability to order parts on the go</li>
+                                <li>Track time spent on jobs</li>
+                                <li>Document work with photos</li>
+                                <li>Simple communication with tenants</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-exclamation-triangle"></i> Frustrations</div>
+                        <div class="section-content">
+                            <ul class="frustrations-list">
+                                <li>Vague work orders ("something's broken")</li>
+                                <li>No access to building plans on site</li>
+                                <li>Can't update status without calling office</li>
+                                <li>Paperwork after every job</li>
+                                <li>Language barriers with some tenants</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-scroll"></i> Typical Scenario</div>
+                        <div class="section-content">
+                            <div class="scenario">
+                                Jim receives a push notification about a clogged toilet. The work order includes tenant photos, apartment number, and plumbing history. He accepts, fixes it in 30 minutes, takes "after" photos, marks it complete, and moves to next job—all from his phone.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Persona 4: The Building Owner -->
+            <div class="persona-card persona-4">
+                <div class="persona-header">
+                    <div class="persona-icon">💼</div>
+                    <div class="persona-name">Sarah Johnson</div>
+                    <div class="persona-role">Real Estate Investor • 8 Properties</div>
+                    <div class="persona-quote">"I need to see the big picture - what's costing me money and what's keeping tenants happy."</div>
+                </div>
+                <div class="persona-content">
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-user"></i> Demographics</div>
+                        <div class="section-content">
+                            <p><strong>Age:</strong> 58 • <strong>Occupation:</strong> Real Estate Investor<br>
+                            <strong>Tech Comfort:</strong> Medium-High • <strong>Focus:</strong> ROI & Property Value</p>
+                            <div class="tags">
+                                <span class="tag">Data Analytics</span>
+                                <span class="tag">Portfolio View</span>
+                                <span class="tag">Cost Optimization</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-bullseye"></i> Goals</div>
+                        <div class="section-content">
+                            <ul class="goals-list">
+                                <li>Monitor maintenance costs across portfolio</li>
+                                <li>Identify recurring/expensive issues</li>
+                                <li>Track tenant satisfaction metrics</li>
+                                <li>Ensure regulatory compliance</li>
+                                <li>Make data-driven capital improvement decisions</li>
+                                <li>Maximize property value and ROI</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-exclamation-triangle"></i> Frustrations</div>
+                        <div class="section-content">
+                            <ul class="frustrations-list">
+                                <li>Getting surprise repair bills</li>
+                                <li>No visibility into maintenance efficiency</li>
+                                <li>Can't compare performance across buildings</li>
+                                <li>Difficulty tracking preventive maintenance</li>
+                                <li>Paper-based records hard to analyze</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="section">
+                        <div class="section-title"><i class="fas fa-scroll"></i> Typical Scenario</div>
+                        <div class="section-content">
+                            <div class="scenario">
+                                Sarah logs into the owner portal monthly. She sees a dashboard showing maintenance costs per building, common issues, repair times, and tenant satisfaction scores. She notices Building C has high plumbing costs and schedules capital improvement review.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Building Maintenance App • Persona Validation • Sprint 1: Foundation & Discovery</p>
+            <p>Use these personas to guide feature prioritization, UI design, and user experience decisions.</p>
+            <p>Next steps: Interview building managers (S1‑08) and survey tenants (S1‑09) to validate these assumptions.</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add interactivity
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.persona-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('click', function() {
+                    this.classList.toggle('expanded');
+                });
+            });
+            
+            // Print-friendly version
+            const printBtn = document.createElement('button');
+            printBtn.innerHTML = '<i class="fas fa-print"></i> Print Personas';
+            printBtn.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: white;
+                color: #667eea;
+                border: none;
+                padding: 12px 24px;
+                border-radius: 50px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            `;
+            printBtn.addEventListener('click', () => window.print());
+            document.body.appendChild(printBtn);
+        });
+    </script>
+</body>
+</html>

@@ -1,41 +1,72 @@
-# System Architecture
+# System Architecture - Multi-Tenant SaaS
 
-## High‑Level Overview
+## 🏗️ High‑Level Overview (Multi-tenant)
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Mobile App    │────▶│    Backend      │────▶│   Database      │
-│  (React Native) │     │   (Node.js)     │     │  (PostgreSQL)   │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-         │                       │                       │
-         │                       │                       │
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Web Dashboard │     │   Cloud Storage │     │   External      │
-│    (React)      │     │     (S3)        │     │   Services      │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    SaaS PLATFORM                            │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │   TENANT A  │  │   TENANT B  │  │   TENANT C  │        │
+│  │  (Acme Co)  │  │ (Beta Prop) │  │ (Gamma Mgmt)│        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│         │               │               │                  │
+│         ▼               ▼               ▼                  │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │            MULTI-TENANT BACKEND API                │   │
+│  │          (Tenant-aware middleware)                 │   │
+│  └────────────────────────────────────────────────────┘   │
+│         │               │               │                  │
+│         ▼               ▼               ▼                  │
+│  ┌────────────────────────────────────────────────────┐   │
+│  │          SHARED POSTGRESQL DATABASE               │   │
+│  │       (Row-level tenant isolation)                │   │
+│  └────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+         │                            │
+         ▼                            ▼
+┌─────────────────┐        ┌─────────────────┐
+│   Mobile Apps   │        │  Web Dashboards │
+│ (React Native)  │        │    (React)      │
+│ • Tenant login  │        │ • Admin portal  │
+│ • Issue reports │        │ • Analytics     │
+│ • Notifications │        │ • User management│
+└─────────────────┘        └─────────────────┘
 ```
 
-## Component Details
+## 🎯 Multi-Tenant Architecture Principles
 
-### 1. Frontend
+### **Core Design:**
+1. **Tenant Isolation:** Row-level security in shared database
+2. **Tenant Context:** JWT includes `tenantId` for all requests
+3. **Automatic Filtering:** All queries scoped to current tenant
+4. **Plan Enforcement:** Feature gates based on subscription tier
+
+### **Deployment Options:**
+- **SaaS Multi-tenant:** Shared infrastructure (default)
+- **Dedicated Instance:** Database per tenant (enterprise)
+- **On-premise:** Self-hosted Docker/Kubernetes
+
+## 🏢 Component Details
+
+### 1. Frontend (Tenant-aware)
 #### Mobile App (React Native)
-- **Target:** iOS & Android
-- **Key Screens:**
-  - Login/Registration
-  - Report Issue (camera, location picker, form)
-  - My Requests (list with status)
-  - Notifications
-- **State Management:** Redux Toolkit
-- **Navigation:** React Navigation
+- **Multi-tenant login:** Users select/organization
+- **Tenant context:** All API calls include tenant headers
+- **Offline support:** Tenant-specific data caching
+- **Push notifications:** Tenant-branded messages
 
 #### Web Dashboard (React)
-- **Target:** Building managers, owners
-- **Key Screens:**
-  - Dashboard (open/closed issues, metrics)
-  - Request Queue (sort/filter/assign)
-  - Maintenance Calendar
-  - Analytics & Reports
-- **UI Library:** Material‑UI or Chakra UI
-- **Charts:** Recharts or Chart.js
+- **Tenant admin portal:** User/building management
+- **Usage analytics:** Tenant-specific metrics
+- **Billing portal:** Subscription management
+- **White-label options:** Custom branding per tenant
+
+### 2. Backend (Multi-tenant API)
+#### Tenant Management Layer
+- **Tenant signup:** Self-service with trial period
+- **Subdomain routing:** `{tenant}.buildingapp.com`
+- **Plan enforcement:** Feature gates based on subscription
+- **Usage tracking:** Metrics for billing
 
 ### 2. Backend (Node.js + Express)
 #### API Layer

@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    container_name: building-maintenance-db
+    environment:
+      POSTGRES_USER: building_user
+      POSTGRES_PASSWORD: building_password
+      POSTGRES_DB: building_maintenance
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U building_user -d building_maintenance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - building-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./packages/backend
+      dockerfile: Dockerfile
+    container_name: building-maintenance-backend
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://building_user:building_password@postgres:5432/building_maintenance
+      JWT_SECRET: development-jwt-secret-change-in-production
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./packages/backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - building-network
+    command: npm run dev
+
+  # Web frontend (optional)
+  web:
+    build:
+      context: ./packages/web
+      dockerfile: Dockerfile
+    container_name: building-maintenance-web
+    environment:
+      VITE_API_URL: http://localhost:3001/api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./packages/web:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - building-network
+    command: npm run dev
+
+  # Prisma Studio (database GUI)
+  prisma-studio:
+    build:
+      context: ./packages/backend
+      dockerfile: Dockerfile
+    container_name: building-maintenance-prisma-studio
+    environment:
+      DATABASE_URL: postgresql://building_user:building_password@postgres:5432/building_maintenance
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./packages/backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - building-network
+    command: npx prisma studio
+
+networks:
+  building-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
