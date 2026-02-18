@@ -1,0 +1,272 @@
+#28A745;"></div>
+                    <div class="urgency-content">
+                        <div class="urgency-title">Routine - Within 3-5 days</div>
+                        <div class="urgency-subtext">Painting, minor repairs, general maintenance</div>
+                    </div>
+                </div>
+                
+                <div class="urgency-option urgent" onclick="selectUrgency('urgent')">
+                    <div class="radio-button" style="color: #FF6B35;"></div>
+                    <div class="urgency-content">
+                        <div class="urgency-title">Urgent - Within 24 hours</div>
+                        <div class="urgency-subtext">Partial AC, drain issues, non-critical</div>
+                    </div>
+                </div>
+                
+                <div class="urgency-option emergency" onclick="selectUrgency('emergency')">
+                    <div class="radio-button" style="color: #D7263D;"></div>
+                    <div class="urgency-content">
+                        <div class="urgency-title">Emergency - Immediate response</div>
+                        <div class="urgency-subtext">Water leaks, AC failure, electrical hazards</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Emergency Note (Conditional) -->
+        <div class="emergency-note" id="emergencyNote">
+            <div class="emergency-icon">⚠️</div>
+            <div class="emergency-text">
+                For water leaks or AC failure, call <a href="tel:3055554357" style="color: inherit; text-decoration: underline;">(305) 555-HELP</a> immediately
+            </div>
+        </div>
+        
+        <!-- Footer Note -->
+        <div class="footer-note">
+            By submitting, you agree to maintenance staff entry for repairs during business hours
+        </div>
+    </div>
+    
+    <!-- Submit Button -->
+    <button class="submit-button" id="submitButton" onclick="submitForm()">
+        Submit Issue
+    </button>
+    
+    <script>
+        // Urgency Selection
+        function selectUrgency(type) {
+            // Remove selected class from all options
+            document.querySelectorAll('.urgency-option').forEach(option => {
+                option.classList.remove('selected');
+                const radio = option.querySelector('.radio-button');
+                radio.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked option
+            const selectedOption = document.querySelector(`.urgency-option.${type}`);
+            selectedOption.classList.add('selected');
+            selectedOption.querySelector('.radio-button').classList.add('selected');
+            
+            // Show/hide emergency note
+            const emergencyNote = document.getElementById('emergencyNote');
+            if (type === 'emergency') {
+                emergencyNote.classList.add('visible');
+            } else {
+                emergencyNote.classList.remove('visible');
+            }
+            
+            // Update submit button state
+            updateSubmitButton();
+        }
+        
+        // Character Counter
+        const descriptionField = document.querySelector('.description-field');
+        const charCounter = document.querySelector('.char-counter');
+        
+        descriptionField.addEventListener('input', function() {
+            const length = this.value.length;
+            charCounter.textContent = `${length}/500 characters`;
+            
+            // Change color if near limit
+            if (length > 450) {
+                charCounter.style.color = 'var(--warning-orange)';
+            } else if (length > 490) {
+                charCounter.style.color = 'var(--emergency-red)';
+            } else {
+                charCounter.style.color = 'var(--gray-600)';
+            }
+            
+            updateSubmitButton();
+        });
+        
+        // Photo Upload Simulation
+        document.querySelectorAll('.photo-slot').forEach(slot => {
+            slot.addEventListener('click', function() {
+                if (this.classList.contains('add')) {
+                    // Simulate photo upload
+                    this.classList.remove('add');
+                    this.classList.add('has-photo');
+                    this.style.backgroundImage = "url('https://via.placeholder.com/64/5AA9C9/FFFFFF?text=New')";
+                    this.innerHTML = '';
+                    
+                    // Check if we need to add another empty slot
+                    const emptySlots = document.querySelectorAll('.photo-slot.add');
+                    if (emptySlots.length === 0) {
+                        // Add new empty slot if we have less than 4 photos
+                        const photoGrid = document.querySelector('.photo-grid');
+                        const totalSlots = photoGrid.children.length;
+                        if (totalSlots < 4) {
+                            const newSlot = document.createElement('div');
+                            newSlot.className = 'photo-slot add';
+                            newSlot.innerHTML = `
+                                <div style="font-size: 20px; margin-bottom: 4px;">+</div>
+                                <div>Add</div>
+                            `;
+                            newSlot.addEventListener('click', function() {
+                                this.classList.remove('add');
+                                this.classList.add('has-photo');
+                                this.style.backgroundImage = "url('https://via.placeholder.com/64/5AA9C9/FFFFFF?text=New')";
+                                this.innerHTML = '';
+                            });
+                            photoGrid.appendChild(newSlot);
+                        }
+                    }
+                } else if (this.classList.contains('has-photo')) {
+                    // Simulate photo deletion
+                    if (confirm('Delete this photo?')) {
+                        this.classList.remove('has-photo');
+                        this.classList.add('add');
+                        this.style.backgroundImage = '';
+                        this.innerHTML = `
+                            <div style="font-size: 20px; margin-bottom: 4px;">+</div>
+                            <div>Add</div>
+                        `;
+                    }
+                }
+                
+                updateSubmitButton();
+            });
+        });
+        
+        // Language Toggle
+        document.querySelectorAll('.language-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.language-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Simulate language change
+                const isSpanish = this.textContent === 'ES';
+                document.querySelector('.nav-title').textContent = isSpanish ? 'Reportar Problema' : 'Report Issue';
+                document.querySelector('.screen-title').textContent = isSpanish ? '¿Qué necesita reparación?' : 'What needs repair?';
+                document.querySelector('.section-label[for="category"]').textContent = isSpanish ? 'Categoría' : 'Category';
+                document.querySelector('.category-selector span:first-child').textContent = isSpanish ? 'Seleccionar categoría' : 'Select a category';
+                document.querySelector('.section-label[for="description"]').textContent = isSpanish ? 'Describa el problema' : 'Describe the issue';
+                document.querySelector('.description-field').placeholder = isSpanish ? 'Describa el problema en detalle...' : 'Describe the problem in detail...';
+                document.querySelector('.section-label[for="photos"]').textContent = isSpanish ? 'Añadir fotos (opcional)' : 'Add photos (optional)';
+                document.querySelector('.helper-text').textContent = isSpanish ? 'Hasta 4 fotos. Fotos claras nos ayudan a reparar más rápido.' : 'Up to 4 photos. Clear photos help us fix it faster.';
+                document.querySelector('.section-label[for="urgency"]').textContent = isSpanish ? '¿Qué tan urgente es?' : 'How urgent is this?';
+                document.querySelector('.urgency-option.routine .urgency-title').textContent = isSpanish ? 'Rutina - Dentro de 3-5 días' : 'Routine - Within 3-5 days';
+                document.querySelector('.urgency-option.routine .urgency-subtext').textContent = isSpanish ? 'Pintura, reparaciones menores, mantenimiento general' : 'Painting, minor repairs, general maintenance';
+                document.querySelector('.urgency-option.urgent .urgency-title').textContent = isSpanish ? 'Urgente - Dentro de 24 horas' : 'Urgent - Within 24 hours';
+                document.querySelector('.urgency-option.urgent .urgency-subtext').textContent = isSpanish ? 'AC parcial, problemas de drenaje, no crítico' : 'Partial AC, drain issues, non-critical';
+                document.querySelector('.urgency-option.emergency .urgency-title').textContent = isSpanish ? 'Emergencia - Respuesta inmediata' : 'Emergency - Immediate response';
+                document.querySelector('.urgency-option.emergency .urgency-subtext').textContent = isSpanish ? 'Fugas de agua, falla del AC, peligros eléctricos' : 'Water leaks, AC failure, electrical hazards';
+                document.querySelector('.emergency-text').innerHTML = isSpanish ? 
+                    'Para fugas de agua o falla del AC, llame a <a href="tel:3055554357" style="color: inherit; text-decoration: underline;">(305) 555-HELP</a> inmediatamente' :
+                    'For water leaks or AC failure, call <a href="tel:3055554357" style="color: inherit; text-decoration: underline;">(305) 555-HELP</a> immediately';
+                document.querySelector('.footer-note').textContent = isSpanish ? 
+                    'Al enviar, acepta la entrada del personal de mantenimiento para reparaciones durante horas laborales' :
+                    'By submitting, you agree to maintenance staff entry for repairs during business hours';
+                document.querySelector('#submitButton').textContent = isSpanish ? 'Enviar Problema' : 'Submit Issue';
+            });
+        });
+        
+        // Form Validation
+        function updateSubmitButton() {
+            const submitButton = document.getElementById('submitButton');
+            const categorySelected = document.querySelector('.category-selector span:first-child').textContent !== 'Select a category' && 
+                                   document.querySelector('.category-selector span:first-child').textContent !== 'Seleccionar categoría';
+            const hasDescription = descriptionField.value.trim().length >= 10;
+            const hasPhotos = document.querySelectorAll('.photo-slot.has-photo').length > 0;
+            const urgencySelected = document.querySelector('.urgency-option.selected') !== null;
+            
+            // Enable if at least one of category, description (10+ chars), or photo exists, AND urgency is selected
+            const isValid = (categorySelected || hasDescription || hasPhotos) && urgencySelected;
+            
+            submitButton.disabled = !isValid;
+        }
+        
+        // Initialize
+        updateSubmitButton();
+        
+        // Form Submission
+        function submitForm() {
+            const submitButton = document.getElementById('submitButton');
+            const originalText = submitButton.textContent;
+            
+            // Show loading state
+            submitButton.textContent = 'Submitting...';
+            submitButton.disabled = true;
+            
+            // Simulate API call
+            setTimeout(() => {
+                // Show success message
+                alert('✅ Issue submitted successfully!\n\nTicket #: BMA-304-2026-001\n\nYou will receive SMS updates on the repair status.');
+                
+                // Reset form (in real app, would navigate to status screen)
+                submitButton.textContent = originalText;
+                updateSubmitButton();
+                
+                // Reset form for demo purposes
+                document.querySelector('.category-selector span:first-child').textContent = 'Select a category';
+                descriptionField.value = '';
+                charCounter.textContent = '0/500 characters';
+                document.querySelectorAll('.photo-slot.has-photo').forEach(slot => {
+                    slot.classList.remove('has-photo');
+                    slot.classList.add('add');
+                    slot.style.backgroundImage = '';
+                    slot.innerHTML = `
+                        <div style="font-size: 20px; margin-bottom: 4px;">+</div>
+                        <div>Add</div>
+                    `;
+                });
+                // Keep only first slot as add, remove extras
+                const photoGrid = document.querySelector('.photo-grid');
+                while (photoGrid.children.length > 1) {
+                    photoGrid.removeChild(photoGrid.lastChild);
+                }
+                selectUrgency('routine'); // Reset to routine
+            }, 1500);
+        }
+        
+        // Category Dropdown Simulation
+        document.querySelector('.category-selector').addEventListener('click', function() {
+            const categories = [
+                { emoji: '💧', name: 'Plumbing', spanish: 'Plomería' },
+                { emoji: '⚡', name: 'Electrical', spanish: 'Eléctrico' },
+                { emoji: '❄️', name: 'HVAC (AC/Heating)', spanish: 'HVAC (AC/Calefacción)' },
+                { emoji: '🍳', name: 'Appliances', spanish: 'Electrodomésticos' },
+                { emoji: '🔧', name: 'General Repair', spanish: 'Reparación General' },
+                { emoji: '🐜', name: 'Pest Control', spanish: 'Control de Plagas' },
+                { emoji: '📝', name: 'Other', spanish: 'Otro' }
+            ];
+            
+            const isSpanish = document.querySelector('.language-option.active').textContent === 'ES';
+            const categoryList = categories.map(cat => 
+                `${cat.emoji} ${isSpanish ? cat.spanish : cat.name}`
+            ).join('\n');
+            
+            const selected = prompt(`Select category:\n\n${categoryList}`);
+            if (selected) {
+                const selectedText = selected.split(' ').slice(1).join(' ');
+                this.querySelector('span:first-child').textContent = selectedText;
+                updateSubmitButton();
+            }
+        });
+        
+        // Back button
+        document.querySelector('.nav-button:first-child').addEventListener('click', function() {
+            if (confirm('Go back? Any unsaved changes will be lost.')) {
+                alert('Navigating back to dashboard...');
+            }
+        });
+        
+        // Help button
+        document.querySelector('.nav-button:last-child').addEventListener('click', function() {
+            alert('💡 Help Tips:\n\n1. Take clear photos of the problem\n2. Be specific in your description\n3. Select the correct urgency level\n4. For emergencies, call (305) 555-HELP immediately\n\nNeed more help? Contact support@buildingmaintenance.com');
+        });
+    </script>
+</body>
+</html>

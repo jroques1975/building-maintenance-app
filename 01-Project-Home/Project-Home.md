@@ -7,9 +7,12 @@
 - [Sprint Board](https://github.com/.../projects/1) *(placeholder)*
 
 ## Current Status
-**Phase:** Discovery  
-**Next Milestone:** Complete user‑story mapping by Feb 20  
-**Last Updated:** 2026‑02‑13
+**Phase:** Design & Prototyping  
+**Sprint 1:** ✅ Complete (Development environment, persona validation)  
+**Sprint 2:** 🎯 In Progress (Wireframing & Prototyping)  
+**Latest Achievement:** ✅ Functional prototype completed for Issue Submission screen (T3)  
+**Next Milestone:** Complete System Integration Testing (SIT) & usability testing  
+**Last Updated:** 2026‑02‑17
 
 ## Core Problem
 Building managers juggle paper tickets, missed inspections, and poor communication with tenants and vendors. Tenants suffer from slow response times and lack of visibility.
