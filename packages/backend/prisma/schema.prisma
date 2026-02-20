@@ -34,6 +34,7 @@ model Building {
   
   // UNIT DIRECTORY (physical spaces in building)
   units         Unit[]
+  users         User[]
   
   // MAINTENANCE HISTORY (building timeline)
   issues        Issue[]
@@ -164,6 +165,8 @@ model User {
   role          UserRole  @default(TENANT)
   
   // TENANT-SPECIFIC FIELDS (if user is a tenant)
+  buildingId    String?   // Building context (legacy UI compatibility)
+  apartment     String?   // Apartment/unit label (legacy UI compatibility)
   unitId        String?   // Which unit they occupy
   leaseStart    DateTime?
   leaseEnd      DateTime?
@@ -180,6 +183,7 @@ model User {
   // Relations
   unit          Unit?     @relation("UnitOccupants", fields: [unitId], references: [id])
   currentOccupyingUnits Unit[] @relation("CurrentTenant")
+  building      Building? @relation(fields: [buildingId], references: [id])
   managementCompany ManagementCompany? @relation(fields: [managementCompanyId], references: [id])
   hoaOrganization HoaOrganization? @relation(fields: [hoaOrganizationId], references: [id])
   submittedIssues Issue[] @relation("SubmittedBy")
@@ -191,6 +195,7 @@ model User {
   
   // Email must be unique globally (single sign-on across buildings/companies)
   @@unique([email])
+  @@index([buildingId])
   @@index([unitId])
   @@index([managementCompanyId])
   @@index([hoaOrganizationId])
