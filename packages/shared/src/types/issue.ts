@@ -7,11 +7,11 @@ export interface Issue {
   priority: Priority;
   status: IssueStatus;
   category: string;
-  reporterId: string;
-  assigneeId?: string;
+  submittedById: string;
+  assignedToId?: string;
   buildingId: string;
-  unitNumber?: string;
-  locationDetails?: string;
+  unitId?: string;
+  location?: string;
   estimatedCost?: number;
   actualCost?: number;
   scheduledDate?: Date;
@@ -26,8 +26,10 @@ export interface CreateIssueDto {
   priority: Priority;
   category: string;
   buildingId: string;
-  unitNumber?: string;
-  locationDetails?: string;
+  unitId?: string;
+  location?: string;
+  estimatedCost?: number;
+  scheduledDate?: Date;
 }
 
 export interface UpdateIssueDto {
@@ -36,8 +38,8 @@ export interface UpdateIssueDto {
   priority?: Priority;
   status?: IssueStatus;
   category?: string;
-  assigneeId?: string;
-  locationDetails?: string;
+  assignedToId?: string;
+  location?: string;
   estimatedCost?: number;
   actualCost?: number;
   scheduledDate?: Date;
@@ -45,13 +47,13 @@ export interface UpdateIssueDto {
 }
 
 export interface IssueWithRelations extends Issue {
-  reporter: {
+  submittedBy: {
     id: string;
     firstName: string;
     lastName: string;
     email: string;
   };
-  assignee?: {
+  assignedTo?: {
     id: string;
     firstName: string;
     lastName: string;
@@ -69,8 +71,8 @@ export interface IssueFilter {
   status?: IssueStatus;
   priority?: Priority;
   category?: string;
-  reporterId?: string;
-  assigneeId?: string;
+  submittedById?: string;
+  assignedToId?: string;
   startDate?: Date;
   endDate?: Date;
 }

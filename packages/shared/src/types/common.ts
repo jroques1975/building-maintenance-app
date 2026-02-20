@@ -1,6 +1,6 @@
-export type Priority = 'low' | 'medium' | 'high' | 'emergency';
-export type IssueStatus = 'open' | 'assigned' | 'in_progress' | 'completed' | 'closed';
-export type UserRole = 'tenant' | 'technician' | 'manager' | 'admin';
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type IssueStatus = 'PENDING' | 'IN_REVIEW' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type UserRole = 'TENANT' | 'MAINTENANCE' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN' | 'BUILDING_OWNER';
 
 export interface Timestamps {
   createdAt: Date;
