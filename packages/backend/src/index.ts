@@ -12,7 +12,7 @@ import { issueRoutes } from './routes/issue.routes';
 import { workOrderRoutes } from './routes/workOrder.routes';
 import { userRoutes } from './routes/user.routes';
 import { healthRoutes } from './routes/health.routes';
-import { tenantRoutes } from './routes/tenant.routes';
+import tenantRoutes from './routes/tenant.routes';
 import { operatorRoutes } from './routes/operator.routes';
 
 const app = express();

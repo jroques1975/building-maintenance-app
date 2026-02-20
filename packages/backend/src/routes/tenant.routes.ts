@@ -21,6 +21,7 @@ const createTenantSchema = z.object({
 
 const updateTenantSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  subdomain: z.string().min(3).max(50).regex(/^[a-z0-9-]+$/).optional(),
   plan: z.enum(['STARTER', 'PROFESSIONAL', 'ENTERPRISE', 'CUSTOM']).optional(),
   status: z.enum(['ACTIVE', 'TRIAL', 'SUSPENDED', 'CANCELLED', 'ARCHIVED']).optional(),
   settings: z.record(z.any()).optional(),

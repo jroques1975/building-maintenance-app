@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../prisma/client';
 import { AppError } from '../middleware/errorHandler';
 import { authenticateWithTenant, authorize } from '../middleware/auth-tenant.combined';
-import { UserRole, WorkOrderStatus, WorkOrderPriority } from '@prisma/client';
+import { UserRole, WorkOrderStatus, WorkOrderPriority } from '../types/prisma-enums';
 
 const router = Router();
 

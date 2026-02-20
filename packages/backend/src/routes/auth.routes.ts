@@ -4,7 +4,7 @@ import { prisma } from '../prisma/client';
 import { AuthService } from '../utils/auth';
 import { AppError } from '../middleware/errorHandler';
 import { authenticate, authorize } from '../middleware/auth.middleware';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../types/prisma-enums';
 
 const router = Router();
 

@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
+// Prisma-specific error narrowing disabled until client/schema alignment is restored.
 import { logger } from '../utils/logger';
 
 export class AppError extends Error {
   constructor(
     public statusCode: number,
     public message: string,
+    public details: any = undefined,
     public isOperational = true
   ) {
     super(message);
@@ -40,26 +41,24 @@ export const errorHandler = (
     });
   }
 
-  // Handle Prisma errors
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    // Handle unique constraint violations
-    if (err.code === 'P2002') {
-      const target = (err.meta?.target as string[]) || ['field'];
+  // Handle Prisma-like errors without tight client coupling
+  const prismaCode = (err as any)?.code as string | undefined;
+  if (prismaCode) {
+    if (prismaCode === 'P2002') {
+      const target = ((err as any)?.meta?.target as string[]) || ['field'];
       return res.status(409).json({
         status: 'error',
         message: `A record with this ${target.join(', ')} already exists`,
       });
     }
 
-    // Handle record not found
-    if (err.code === 'P2025') {
+    if (prismaCode === 'P2025') {
       return res.status(404).json({
         status: 'error',
         message: 'Record not found',
       });
     }
 
-    // Handle other Prisma errors
     return res.status(400).json({
       status: 'error',
       message: 'Database error occurred',

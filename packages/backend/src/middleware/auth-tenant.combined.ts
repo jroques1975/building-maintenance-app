@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../types/prisma-enums';
 import { AuthService, JwtPayload } from '../utils/auth';
 import { AppError } from './errorHandler';
 import { PrismaClient } from '@prisma/client';
@@ -17,7 +17,7 @@ declare global {
         userId: string;
         email: string;
         role: UserRole;
-        tenantId: string;
+        tenantId?: string;
         buildingId?: string;
         tenantPlan?: string;
       };
@@ -127,14 +127,14 @@ export const authenticateWithTenant = async (
 /**
  * Authorization middleware (works with tenant context)
  */
-export const authorize = (...allowedRoles: UserRole[]) => {
+export const authorize = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new AppError(401, 'Authentication required'));
     }
 
-    const hasAccess = allowedRoles.some(role => 
-      AuthService.hasRole(req.user!.role, role)
+    const hasAccess = allowedRoles.some((role) => 
+      AuthService.hasRole(req.user!.role as any, role as any)
     );
 
     if (!hasAccess) {

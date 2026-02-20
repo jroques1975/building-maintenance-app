@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../types/prisma-enums';
 import { AuthService } from '../utils/auth';
 import { AppError } from './errorHandler';
 
@@ -10,7 +10,9 @@ declare global {
         userId: string;
         email: string;
         role: UserRole;
+        tenantId?: string;
         buildingId?: string;
+        tenantPlan?: string;
       };
     }
   }
@@ -37,14 +39,14 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const authorize = (...allowedRoles: UserRole[]) => {
+export const authorize = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return next(new AppError(401, 'Authentication required'));
     }
 
-    const hasAccess = allowedRoles.some(role => 
-      AuthService.hasRole(req.user!.role, role)
+    const hasAccess = allowedRoles.some((role) => 
+      AuthService.hasRole(req.user!.role as any, role as any)
     );
 
     if (!hasAccess) {

@@ -1,12 +1,12 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../types/prisma-enums';
 
 export interface JwtPayload {
   userId: string;
   email: string;
   role: UserRole;
-  tenantId: string;      // Multi-tenant: which organization user belongs to
+  tenantId?: string;      // Multi-tenant: which organization user belongs to
   buildingId?: string;
   tenantPlan?: string;   // Optional: tenant's subscription plan
 }
@@ -34,9 +34,9 @@ export class AuthService {
    * Generate JWT token
    */
   static generateToken(payload: JwtPayload): string {
-    return jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: this.JWT_EXPIRES_IN,
-    });
+    return jwt.sign(payload, this.JWT_SECRET as any, {
+      expiresIn: this.JWT_EXPIRES_IN as any,
+    } as any);
   }
 
   /**
@@ -92,6 +92,8 @@ export class AuthService {
       MAINTENANCE: 2,
       MANAGER: 3,
       ADMIN: 4,
+      SUPER_ADMIN: 5,
+      BUILDING_OWNER: 4,
     };
 
     return roleHierarchy[userRole] >= roleHierarchy[requiredRole];
