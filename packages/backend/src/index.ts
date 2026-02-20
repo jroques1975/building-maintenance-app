@@ -13,6 +13,7 @@ import { workOrderRoutes } from './routes/workOrder.routes';
 import { userRoutes } from './routes/user.routes';
 import { healthRoutes } from './routes/health.routes';
 import { tenantRoutes } from './routes/tenant.routes';
+import { operatorRoutes } from './routes/operator.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +29,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/tenants', tenantRoutes);  // Tenant management (signup, admin)
 app.use('/api/auth', authRoutes);       // Authentication (login, etc.)
 app.use('/api/users', userRoutes);      // User management (within tenant)
+app.use('/api', operatorRoutes);        // Operator portfolio + timeline + transitions
 app.use('/api/buildings', buildingRoutes); // Building management (within tenant)
 app.use('/api/issues', issueRoutes);    // Issue management (within tenant)
 app.use('/api/work-orders', workOrderRoutes); // Work order management (within tenant)
