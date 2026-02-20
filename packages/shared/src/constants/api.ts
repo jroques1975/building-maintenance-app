@@ -1,5 +1,10 @@
 // API configuration
-export const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+// Guard against browser runtime where `process` is undefined.
+const processEnv = (typeof globalThis !== 'undefined' && (globalThis as any).process?.env)
+  ? (globalThis as any).process.env
+  : undefined;
+
+export const API_BASE_URL = processEnv?.API_BASE_URL || 'http://localhost:3001';
 export const API_TIMEOUT = 30000; // 30 seconds
 
 // API endpoints
