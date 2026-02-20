@@ -5,6 +5,7 @@ import Issues from '../pages/Issues';
 import Login from '../pages/Login';
 import OperatorContinuity from '../pages/OperatorContinuity';
 import UatChecklist from '../pages/UatChecklist';
+import UatCommandCenter from '../pages/UatCommandCenter';
 import WorkOrders from '../pages/WorkOrders';
 
 const router = createBrowserRouter([
@@ -18,6 +19,7 @@ const router = createBrowserRouter([
       { path: 'work-orders', element: <WorkOrders /> },
       { path: 'operator-continuity', element: <OperatorContinuity /> },
       { path: 'uat-checklist', element: <UatChecklist /> },
+      { path: 'uat-command-center', element: <UatCommandCenter /> },
     ],
   },
 ]);

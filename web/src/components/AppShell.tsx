@@ -7,6 +7,7 @@ const navItems = [
   { to: '/work-orders', label: 'Work Orders' },
   { to: '/operator-continuity', label: 'Operator Continuity' },
   { to: '/uat-checklist', label: 'UAT Checklist' },
+  { to: '/uat-command-center', label: 'UAT Command Center' },
 ];
 
 export default function AppShell() {
