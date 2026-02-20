@@ -115,4 +115,72 @@ describe('operator routes', () => {
     expect(res.status).toBe(404);
     expect(body.message).toBe('Building not found');
   });
+
+  it('POST /api/buildings/:id/transition performs continuity handoff', async () => {
+    mockPrisma.building.findUnique.mockResolvedValue({
+      id: 'b1',
+      name: 'Ocean View',
+      currentOperatorPeriodId: 'op-old',
+    });
+
+    mockPrisma.buildingOperatorPeriod.findFirst.mockResolvedValue({
+      id: 'op-old',
+      buildingId: 'b1',
+      status: 'ACTIVE',
+      startDate: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    mockPrisma.managementCompany.findUnique.mockResolvedValue({
+      id: 'mc1',
+      name: 'Skyline PM',
+    });
+
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        buildingOperatorPeriod: {
+          update: vi.fn().mockResolvedValue({
+            id: 'op-old',
+            operatorType: 'PM',
+            status: 'ENDED',
+            startDate: new Date('2026-01-01T00:00:00.000Z'),
+            endDate: new Date('2026-03-01T00:00:00.000Z'),
+          }),
+          create: vi.fn().mockResolvedValue({
+            id: 'op-new',
+            operatorType: 'PM',
+            status: 'ACTIVE',
+            startDate: new Date('2026-03-01T00:00:00.000Z'),
+            endDate: null,
+            handoffNotes: 'handoff',
+            managementCompany: { id: 'mc1', name: 'Skyline PM' },
+            hoaOrganization: null,
+          }),
+        },
+        building: { update: vi.fn().mockResolvedValue({ id: 'b1' }) },
+        issue: { count: vi.fn().mockResolvedValue(8) },
+        workOrder: { count: vi.fn().mockResolvedValue(5) },
+      };
+      return cb(tx);
+    });
+
+    const res = await fetch(`${baseUrl}/api/buildings/b1/transition`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        fromOperatorPeriodId: 'op-old',
+        toOperatorType: 'PM',
+        toOperatorId: 'mc1',
+        effectiveDate: '2026-03-01T00:00:00.000Z',
+        handoffNotes: 'handoff',
+      }),
+    });
+
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.status).toBe('success');
+    expect(body.data.nextPeriod.id).toBe('op-new');
+    expect(body.data.continuity.issuesInBuildingHistory).toBe(8);
+    expect(body.data.continuity.workOrdersInBuildingHistory).toBe(5);
+  });
 });
