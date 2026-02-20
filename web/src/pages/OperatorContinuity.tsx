@@ -15,15 +15,42 @@ export default function OperatorContinuity() {
   const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().slice(0, 16));
   const [handoffNotes, setHandoffNotes] = useState('UAT transition');
 
+  const [historyStatus, setHistoryStatus] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+  const [periodLimit, setPeriodLimit] = useState('20');
+  const [periodOffset, setPeriodOffset] = useState('0');
+  const [includeUnassigned, setIncludeUnassigned] = useState(true);
+
   const activePeriodId = useMemo(() => timeline.find((p) => p.status === 'ACTIVE')?.id ?? '', [timeline]);
+
+  function toIsoOrUndefined(v: string) {
+    if (!v) return undefined;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+  }
+
+  function buildHistoryQuery() {
+    const params = new URLSearchParams();
+    if (historyStatus) params.set('status', historyStatus);
+    const fromIso = toIsoOrUndefined(historyFrom);
+    const toIso = toIsoOrUndefined(historyTo);
+    if (fromIso) params.set('from', fromIso);
+    if (toIso) params.set('to', toIso);
+    if (periodLimit) params.set('periodLimit', periodLimit);
+    if (periodOffset) params.set('periodOffset', periodOffset);
+    params.set('includeUnassigned', String(includeUnassigned));
+    const q = params.toString();
+    return q ? `?${q}` : '';
+  }
 
   async function loadBuildingData(buildingId: string) {
     setErr('');
     const [historyRes, timelineRes] = await Promise.all([
-      apiRequest(`/buildings/${buildingId}/history`),
+      apiRequest(`/buildings/${buildingId}/history${buildHistoryQuery()}`),
       apiRequest(`/buildings/${buildingId}/operator-timeline`),
     ]);
-    setHistory(historyRes.data);
+    setHistory(historyRes);
     const tl = timelineRes.data?.timeline ?? [];
     setTimeline(tl);
     const known: Array<{ id: string; name: string; type: 'PM' | 'HOA' }> = tl
@@ -49,7 +76,7 @@ export default function OperatorContinuity() {
   useEffect(() => {
     if (!selected) return;
     loadBuildingData(selected).catch((e) => setErr(e.message));
-  }, [selected]);
+  }, [selected, historyStatus, historyFrom, historyTo, periodLimit, periodOffset, includeUnassigned]);
 
   async function runTransition(e: React.FormEvent) {
     e.preventDefault();
@@ -123,6 +150,43 @@ export default function OperatorContinuity() {
       {err && <p style={{ color: '#b91c1c' }}>{err}</p>}
 
       <div style={{ background: 'white', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <h3>History Filters</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(180px,1fr))', gap: 10 }}>
+          <label>
+            Status
+            <select value={historyStatus} onChange={(e) => setHistoryStatus(e.target.value)}>
+              <option value=''>All</option>
+              <option value='ACTIVE'>ACTIVE</option>
+              <option value='PENDING'>PENDING</option>
+              <option value='ENDED'>ENDED</option>
+              <option value='TERMINATED'>TERMINATED</option>
+              <option value='RENEWED'>RENEWED</option>
+            </select>
+          </label>
+          <label>
+            From
+            <input type='datetime-local' value={historyFrom} onChange={(e) => setHistoryFrom(e.target.value)} />
+          </label>
+          <label>
+            To
+            <input type='datetime-local' value={historyTo} onChange={(e) => setHistoryTo(e.target.value)} />
+          </label>
+          <label>
+            Period limit
+            <input value={periodLimit} onChange={(e) => setPeriodLimit(e.target.value)} />
+          </label>
+          <label>
+            Period offset
+            <input value={periodOffset} onChange={(e) => setPeriodOffset(e.target.value)} />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
+            <input type='checkbox' checked={includeUnassigned} onChange={(e) => setIncludeUnassigned(e.target.checked)} />
+            Include unassigned
+          </label>
+        </div>
+      </div>
+
+      <div style={{ background: 'white', borderRadius: 10, padding: 12, marginBottom: 12 }}>
         <h3>Timeline</h3>
         {timeline.map((p: any) => (
           <div key={p.id} style={{ padding: 10, borderBottom: '1px solid #eee' }}>
@@ -135,7 +199,12 @@ export default function OperatorContinuity() {
 
       <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
         <h3>History Totals</h3>
-        {history?.periods?.map((p: any) => (
+        {history?.meta && (
+          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
+            Returned periods: {history.meta.periodsReturned} | limit: {history.meta.periodLimit ?? 'none'} | offset: {history.meta.periodOffset}
+          </div>
+        )}
+        {history?.data?.periods?.map((p: any) => (
           <div key={p.id} style={{ padding: 10, borderBottom: '1px solid #eee' }}>
             <strong>{p.id}</strong> — Totals: {p.totals?.issues ?? 0} issues / {p.totals?.workOrders ?? 0} work orders
           </div>
