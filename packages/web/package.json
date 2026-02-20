@@ -13,7 +13,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\""
   },
   "dependencies": {
-    "@building-maintenance-app/shared": "*",
+    "@building-maintenance-app/shared": "file:../shared",
     "@emotion/react": "^11.0.0",
     "@emotion/styled": "^11.0.0",
     "@mui/icons-material": "^5.0.0",

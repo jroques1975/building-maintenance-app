@@ -5,9 +5,7 @@
   "description": "Digital platform for building maintenance and repair requests",
   "author": "Javier",
   "license": "MIT",
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": [],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
     "dev:backend": "cd packages/backend && npm run dev",

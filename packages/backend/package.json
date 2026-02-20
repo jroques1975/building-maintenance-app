@@ -19,7 +19,7 @@
     "lint:fix": "eslint src --ext .ts --fix"
   },
   "dependencies": {
-    "@building-maintenance/shared": "workspace:*",
+    "@building-maintenance-app/shared": "file:../shared",
     "@prisma/client": "^5.7.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

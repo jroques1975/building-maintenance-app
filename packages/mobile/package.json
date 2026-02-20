@@ -15,7 +15,7 @@
     "build:ios": "cd ios && xcodebuild -workspace BuildingMaintenanceApp.xcworkspace -scheme BuildingMaintenanceApp -configuration Release"
   },
   "dependencies": {
-    "@building-maintenance-app/shared": "*",
+    "@building-maintenance-app/shared": "file:../shared",
     "@react-native-async-storage/async-storage": "^1.0.0",
     "@react-native-community/datetimepicker": "^7.0.0",
     "@react-native-community/image-picker": "^7.0.0",
