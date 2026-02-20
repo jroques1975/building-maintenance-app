@@ -61,3 +61,13 @@ curl -sS "$BASE_URL/buildings/$BUILDING_ID/history" \
 - `building.currentOperatorPeriodId` reflects latest active period.
 - History endpoint returns period-grouped issues/work orders.
 - Unassigned bucket appears for legacy records with null `operatorPeriodId`.
+
+## Regression test commands
+Run from `packages/backend`:
+
+```bash
+npm test
+npm run build
+```
+
+Current automated coverage includes operator route smoke + transition continuity flow.

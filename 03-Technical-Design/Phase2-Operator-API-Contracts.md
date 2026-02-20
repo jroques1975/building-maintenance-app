@@ -3,6 +3,20 @@
 Base path: `/api`
 Auth: `Authorization: Bearer <JWT>`
 
+## Implementation Status (2026-02-20)
+- ✅ Implemented and wired in backend:
+  - `GET /api/portfolio/buildings`
+  - `GET /api/buildings/:buildingId/operator-timeline`
+  - `POST /api/buildings/:buildingId/operator-periods`
+  - `POST /api/buildings/:buildingId/transition`
+  - `GET /api/buildings/:buildingId/history`
+- ✅ Continuity persistence on writes:
+  - `POST /api/issues` auto-binds `operatorPeriodId` from active building period
+  - `POST /api/work-orders` binds `operatorPeriodId` from linked issue or active building period
+- ✅ Test/build baseline currently green in `packages/backend`:
+  - `npm test`
+  - `npm run build`
+
 ---
 
 ## GET `/portfolio/buildings`
