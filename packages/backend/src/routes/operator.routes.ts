@@ -4,6 +4,21 @@ import { prisma } from '../prisma/client';
 import { AppError } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/auth.middleware';
 
+const OPERATOR_READ_ROLES = new Set(['MAINTENANCE', 'MANAGER', 'ADMIN', 'SUPER_ADMIN', 'BUILDING_OWNER']);
+const OPERATOR_WRITE_ROLES = new Set(['MANAGER', 'ADMIN', 'SUPER_ADMIN']);
+
+function ensureOperatorReadAccess(userRole?: string) {
+  if (!userRole || !OPERATOR_READ_ROLES.has(userRole)) {
+    throw new AppError(403, 'Insufficient permissions for operator portfolio/history access');
+  }
+}
+
+function ensureOperatorWriteAccess(userRole?: string) {
+  if (!userRole || !OPERATOR_WRITE_ROLES.has(userRole)) {
+    throw new AppError(403, 'Insufficient permissions for operator period changes');
+  }
+}
+
 const router = Router();
 
 const transitionSchema = z.object({
@@ -34,6 +49,8 @@ router.get('/portfolio/buildings', authenticate, async (req, res, next) => {
     if (!req.user) {
       throw new AppError(401, 'Authentication required');
     }
+
+    ensureOperatorReadAccess(req.user.role);
 
     const actor = await prisma.user.findUnique({
       where: { id: req.user.userId },
@@ -117,6 +134,8 @@ router.get('/buildings/:buildingId/operator-timeline', authenticate, async (req,
       throw new AppError(401, 'Authentication required');
     }
 
+    ensureOperatorReadAccess(req.user.role);
+
     const { buildingId } = req.params;
     const range = dateRange.parse(req.query);
 
@@ -193,6 +212,8 @@ router.post('/buildings/:buildingId/operator-periods', authenticate, async (req,
     if (!req.user) {
       throw new AppError(401, 'Authentication required');
     }
+
+    ensureOperatorWriteAccess(req.user.role);
 
     const { buildingId } = req.params;
     const payload = createOperatorPeriodSchema.parse(req.body);
@@ -325,6 +346,8 @@ router.get('/buildings/:buildingId/history', authenticate, async (req, res, next
       throw new AppError(401, 'Authentication required');
     }
 
+    ensureOperatorReadAccess(req.user.role);
+
     const { buildingId } = req.params;
 
     const building = await prisma.building.findUnique({
@@ -441,6 +464,8 @@ router.post('/buildings/:buildingId/transition', authenticate, async (req, res, 
     if (!req.user) {
       throw new AppError(401, 'Authentication required');
     }
+
+    ensureOperatorWriteAccess(req.user.role);
 
     const { buildingId } = req.params;
     const payload = transitionSchema.parse(req.body);
