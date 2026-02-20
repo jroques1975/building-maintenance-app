@@ -8,6 +8,7 @@ export default function OperatorContinuity() {
   const [timeline, setTimeline] = useState<any[]>([]);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
+  const [knownOperators, setKnownOperators] = useState<Array<{id:string;name:string;type:'PM'|'HOA'}>>([]);
   const [loading, setLoading] = useState(false);
   const [operatorType, setOperatorType] = useState<'PM' | 'HOA'>('PM');
   const [toOperatorId, setToOperatorId] = useState('');
@@ -23,7 +24,12 @@ export default function OperatorContinuity() {
       apiRequest(`/buildings/${buildingId}/operator-timeline`),
     ]);
     setHistory(historyRes.data);
-    setTimeline(timelineRes.data?.timeline ?? []);
+    const tl = timelineRes.data?.timeline ?? [];
+    setTimeline(tl);
+    const known: Array<{ id: string; name: string; type: 'PM' | 'HOA' }> = tl
+      .map((p: any) => p.managementCompany ? { id: p.managementCompany.id, name: p.managementCompany.name, type: 'PM' as const } : p.hoaOrganization ? { id: p.hoaOrganization.id, name: p.hoaOrganization.name, type: 'HOA' as const } : null)
+      .filter((x: any): x is { id: string; name: string; type: 'PM' | 'HOA' } => Boolean(x));
+    setKnownOperators(Array.from(new Map(known.map((k) => [k.id, k])).values()));
   }
 
   useEffect(() => {
@@ -95,6 +101,9 @@ export default function OperatorContinuity() {
           <label>
             To Operator ID
             <input value={toOperatorId} onChange={(e) => setToOperatorId(e.target.value)} placeholder='cuid...' />
+            <div style={{ fontSize: 12, color: '#6b7280' }}>
+              Known {operatorType} operators: {knownOperators.filter((k) => k.type === operatorType).map((k) => `${k.name} (${k.id})`).join(', ') || 'none in timeline'}
+            </div>
           </label>
           <label>
             Effective Date

@@ -7,6 +7,7 @@ export default function WorkOrders() {
   const [history, setHistory] = useState<any>(null);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [activeWorkOrder, setActiveWorkOrder] = useState<any>(null);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -64,16 +65,39 @@ export default function WorkOrders() {
 
       {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
 
-      <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
-        <div style={{ marginBottom: 8, fontWeight: 600 }}>Work orders found: {orders.length}</div>
-        {orders.map((w: any) => (
-          <div key={w.id} style={{ padding: 10, borderBottom: '1px solid #eee' }}>
-            <strong>{w.title}</strong>
-            <div>Status: {w.status} | Priority: {w.priority}</div>
-            <div>Period: {w.periodId} ({w.operatorType})</div>
-          </div>
-        ))}
-        {orders.length === 0 && <div>No work orders found for selected scope.</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
+        <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
+          <div style={{ marginBottom: 8, fontWeight: 600 }}>Work orders found: {orders.length}</div>
+          {orders.map((w: any) => (
+            <button
+              key={w.id}
+              onClick={() => setActiveWorkOrder(w)}
+              style={{ width: '100%', textAlign: 'left', padding: 10, borderBottom: '1px solid #eee', border: 0, background: activeWorkOrder?.id === w.id ? '#f3f4f6' : 'white', cursor: 'pointer' }}
+            >
+              <strong>{w.title}</strong>
+              <div>Status: {w.status} | Priority: {w.priority}</div>
+              <div>Period: {w.periodId} ({w.operatorType})</div>
+            </button>
+          ))}
+          {orders.length === 0 && <div>No work orders found for selected scope.</div>}
+        </div>
+
+        <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
+          <h3>Work Order Detail</h3>
+          {!activeWorkOrder ? (
+            <p>Select a work order to view details.</p>
+          ) : (
+            <>
+              <div><strong>ID:</strong> {activeWorkOrder.id}</div>
+              <div><strong>Title:</strong> {activeWorkOrder.title}</div>
+              <div><strong>Status:</strong> {activeWorkOrder.status}</div>
+              <div><strong>Priority:</strong> {activeWorkOrder.priority}</div>
+              <div><strong>Created:</strong> {new Date(activeWorkOrder.createdAt).toLocaleString()}</div>
+              <div><strong>Completed:</strong> {activeWorkOrder.completedDate ? new Date(activeWorkOrder.completedDate).toLocaleString() : '—'}</div>
+              <div><strong>Period:</strong> {activeWorkOrder.periodId}</div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

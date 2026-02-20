@@ -7,6 +7,7 @@ export default function Issues() {
   const [history, setHistory] = useState<any>(null);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [activeIssue, setActiveIssue] = useState<any>(null);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -64,16 +65,40 @@ export default function Issues() {
 
       {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
 
-      <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
-        <div style={{ marginBottom: 8, fontWeight: 600 }}>Issues found: {issues.length}</div>
-        {issues.map((i: any) => (
-          <div key={i.id} style={{ padding: 10, borderBottom: '1px solid #eee' }}>
-            <strong>{i.title}</strong>
-            <div>Status: {i.status} | Priority: {i.priority} | Category: {i.category}</div>
-            <div>Period: {i.periodId} ({i.operatorType})</div>
-          </div>
-        ))}
-        {issues.length === 0 && <div>No issues found for selected scope.</div>}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
+        <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
+          <div style={{ marginBottom: 8, fontWeight: 600 }}>Issues found: {issues.length}</div>
+          {issues.map((i: any) => (
+            <button
+              key={i.id}
+              onClick={() => setActiveIssue(i)}
+              style={{ width: '100%', textAlign: 'left', padding: 10, borderBottom: '1px solid #eee', border: 0, background: activeIssue?.id === i.id ? '#f3f4f6' : 'white', cursor: 'pointer' }}
+            >
+              <strong>{i.title}</strong>
+              <div>Status: {i.status} | Priority: {i.priority} | Category: {i.category}</div>
+              <div>Period: {i.periodId} ({i.operatorType})</div>
+            </button>
+          ))}
+          {issues.length === 0 && <div>No issues found for selected scope.</div>}
+        </div>
+
+        <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
+          <h3>Issue Detail</h3>
+          {!activeIssue ? (
+            <p>Select an issue to view details.</p>
+          ) : (
+            <>
+              <div><strong>ID:</strong> {activeIssue.id}</div>
+              <div><strong>Title:</strong> {activeIssue.title}</div>
+              <div><strong>Status:</strong> {activeIssue.status}</div>
+              <div><strong>Priority:</strong> {activeIssue.priority}</div>
+              <div><strong>Category:</strong> {activeIssue.category}</div>
+              <div><strong>Created:</strong> {new Date(activeIssue.createdAt).toLocaleString()}</div>
+              <div><strong>Completed:</strong> {activeIssue.completedDate ? new Date(activeIssue.completedDate).toLocaleString() : '—'}</div>
+              <div><strong>Period:</strong> {activeIssue.periodId}</div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
