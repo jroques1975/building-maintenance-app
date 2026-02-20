@@ -39,10 +39,15 @@ model Building {
   issues        Issue[]
   workOrders    WorkOrder[]
   
-  // MANAGEMENT TIMELINE
+  // MANAGEMENT TIMELINE (legacy)
   managementHistory ManagementContract[]
   currentManagementId String?  // Current management company
   currentManagement ManagementCompany? @relation(fields: [currentManagementId], references: [id])
+
+  // OPERATOR TIMELINE (HOA/PM)
+  operatorPeriods BuildingOperatorPeriod[] @relation("BuildingOperatorPeriods")
+  currentOperatorPeriodId String?
+  currentOperatorPeriod BuildingOperatorPeriod? @relation("CurrentOperatorPeriod", fields: [currentOperatorPeriodId], references: [id])
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -51,6 +56,7 @@ model Building {
   @@unique([address, city, state, zipCode])
   @@index([ownerId])
   @@index([currentManagementId])
+  @@index([currentOperatorPeriodId])
 }
 
 // Management Company (formerly Tenant) - temporal relationship to buildings
@@ -63,18 +69,65 @@ model ManagementCompany {
   settings      Json      @default("{}")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   // CURRENT PORTFOLIO (buildings they currently manage)
   buildings     Building[]
-  
+
   // CONTRACT HISTORY
   contracts     ManagementContract[]
-  
+
+  // OPERATOR PERIODS
+  operatorPeriods BuildingOperatorPeriod[]
+
   // USERS (employees of management company)
   users         User[]
-  
+
   @@index([subdomain])
   @@index([status])
+}
+
+// HOA operator
+model HoaOrganization {
+  id            String    @id @default(cuid())
+  name          String
+  status        TenantStatus @default(ACTIVE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  operatorPeriods BuildingOperatorPeriod[]
+  users         User[]
+
+  @@index([status])
+}
+
+// Operator period - source of truth for HOA/PM lifecycle on a building
+model BuildingOperatorPeriod {
+  id            String    @id @default(cuid())
+  buildingId    String
+  operatorType  OperatorType
+  managementCompanyId String?
+  hoaOrganizationId String?
+  startDate     DateTime
+  endDate       DateTime?
+  status        ContractStatus @default(ACTIVE)
+  handoffNotes  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  building      Building   @relation("BuildingOperatorPeriods", fields: [buildingId], references: [id])
+  managementCompany ManagementCompany? @relation(fields: [managementCompanyId], references: [id])
+  hoaOrganization HoaOrganization? @relation(fields: [hoaOrganizationId], references: [id])
+  issues        Issue[]
+  workOrders    WorkOrder[]
+  currentForBuildings Building[] @relation("CurrentOperatorPeriod")
+
+  @@index([buildingId])
+  @@index([managementCompanyId])
+  @@index([hoaOrganizationId])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status])
+  @@unique([buildingId, status], map: "building_active_operator_period")
 }
 
 // Management Contract - temporal relationship between building and manager
@@ -111,9 +164,10 @@ model User {
   leaseStart    DateTime?
   leaseEnd      DateTime?
   
-  // EMPLOYEE-SPECIFIC FIELDS (if user works for management company)
-  managementCompanyId String?  // Which company employs them
-  employeeId    String?   // Employee ID within company
+  // EMPLOYEE-SPECIFIC FIELDS (if user works for management company/HOA)
+  managementCompanyId String?  // Which PM company employs them
+  hoaOrganizationId String?    // Which HOA they belong to
+  employeeId    String?   // Employee ID within organization
   position      String?   // Job title
   
   createdAt     DateTime  @default(now())
@@ -122,6 +176,7 @@ model User {
   // Relations
   unit          Unit?     @relation(fields: [unitId], references: [id])
   managementCompany ManagementCompany? @relation(fields: [managementCompanyId], references: [id])
+  hoaOrganization HoaOrganization? @relation(fields: [hoaOrganizationId], references: [id])
   submittedIssues Issue[] @relation("SubmittedBy")
   assignedWorkOrders WorkOrder[] @relation("AssignedTo")
   tenantHistory TenantHistory[]  // History of where they lived
@@ -130,6 +185,7 @@ model User {
   @@unique([email])
   @@index([unitId])
   @@index([managementCompanyId])
+  @@index([hoaOrganizationId])
 }
 
 // Unit model - physical space within a building
@@ -191,8 +247,9 @@ model Issue {
   // TEMPORAL CONTEXT (when this happened)
   submittedById String    // Who reported it
   assignedToId  String?   // Who was assigned
-  managementPeriodId String? // Which management period handled it
-  
+  managementPeriodId String? // Which management period handled it (legacy)
+  operatorPeriodId String?   // Which HOA/PM operator period handled it
+
   estimatedCost Decimal?  @db.Decimal(10, 2)
   actualCost    Decimal?  @db.Decimal(10, 2)
   scheduledDate DateTime?
@@ -206,6 +263,7 @@ model Issue {
   submittedBy   User      @relation("SubmittedBy", fields: [submittedById], references: [id])
   assignedTo    User?     @relation(fields: [assignedToId], references: [id])
   managementPeriod ManagementContract? @relation(fields: [managementPeriodId], references: [id])
+  operatorPeriod BuildingOperatorPeriod? @relation(fields: [operatorPeriodId], references: [id])
   workOrders    WorkOrder[]
   attachments   Attachment[]
   comments      Comment[]
@@ -215,6 +273,7 @@ model Issue {
   @@index([submittedById])
   @@index([assignedToId])
   @@index([managementPeriodId])
+  @@index([operatorPeriodId])
   @@index([status])
   @@index([priority])
   @@index([category])
@@ -233,8 +292,9 @@ model WorkOrder {
   
   // TEMPORAL CONTEXT
   assignedToId  String?
-  managementPeriodId String? // Which management period handled it
-  
+  managementPeriodId String? // Which management period handled it (legacy)
+  operatorPeriodId String?   // Which HOA/PM operator period handled it
+
   status        WorkOrderStatus @default(PENDING)
   priority      WorkOrderPriority @default(MEDIUM)
   scheduledDate DateTime?
@@ -254,6 +314,7 @@ model WorkOrder {
   unit          Unit?     @relation(fields: [unitId], references: [id])
   assignedTo    User?     @relation("AssignedTo", fields: [assignedToId], references: [id])
   managementPeriod ManagementContract? @relation(fields: [managementPeriodId], references: [id])
+  operatorPeriod BuildingOperatorPeriod? @relation(fields: [operatorPeriodId], references: [id])
   attachments   Attachment[]
   comments      Comment[]
   
@@ -262,63 +323,20 @@ model WorkOrder {
   @@index([assignedToId])
   @@index([issueId])
   @@index([managementPeriodId])
+  @@index([operatorPeriodId])
   @@index([status])
   @@index([priority])
 }
 
-// Attachment model - for photos, documents, etc.
-model Attachment {
-  id            String    @id @default(cuid())
-  filename      String
-  url           String
-  mimeType      String
-  size          Int       // in bytes
-  issueId       String?
-  workOrderId   String?
-  uploadedById  String
-  createdAt     DateTime  @default(now())
-  
-  // Relations
-  issue         Issue?    @relation(fields: [issueId], references: [id])
-  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
-  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
-  
-  @@index([issueId])
-  @@index([workOrderId])
-  @@index([uploadedById])
-}
-
-// Comment model - for discussions on issues/work orders
-model Comment {
-  id            String    @id @default(cuid())
-  content       String
-  issueId       String?
-  workOrderId   String?
-  authorId      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  issue         Issue?    @relation(fields: [issueId], references: [id])
-  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
-  author        User      @relation(fields: [authorId], references: [id])
-  
-  @@index([issueId])
-  @@index([workOrderId])
-  @@index([authorId])
-}
-
-// Enums
 enum UserRole {
-  TENANT        // Building occupant
-  MAINTENANCE   // Maintenance technician
-  MANAGER       // Property manager
-  ADMIN         // Management company admin
-  SUPER_ADMIN   // Platform admin
-  BUILDING_OWNER // Building owner (different from manager)
+  TENANT
+  MAINTENANCE
+  MANAGER
+  ADMIN
+  SUPER_ADMIN
+  BUILDING_OWNER
 }
 
-// Management Company Plans
 enum TenantPlan {
   STARTER      // Up to 5 buildings
   PROFESSIONAL // Up to 50 buildings
@@ -334,13 +352,18 @@ enum TenantStatus {
   ARCHIVED     // Data kept but no access
 }
 
-// Contract Status
+// Contract/Operator Status
 enum ContractStatus {
   ACTIVE
   PENDING      // Signed but not started
   ENDED        // Completed normally
   TERMINATED   // Ended early
   RENEWED      // Auto-renewed
+}
+
+enum OperatorType {
+  PM
+  HOA
 }
 
 // Unit Types
