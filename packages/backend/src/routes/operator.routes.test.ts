@@ -147,6 +147,52 @@ describe('operator routes', () => {
     expect(body.message).toBe('Building not found');
   });
 
+  it('GET /api/buildings/:id/history supports filters and pagination', async () => {
+    mockPrisma.building.findUnique.mockResolvedValue({
+      id: 'b1',
+      name: 'Ocean View',
+      currentOperatorPeriodId: 'op1',
+    });
+
+    mockPrisma.buildingOperatorPeriod.findMany.mockResolvedValue([
+      {
+        id: 'op1',
+        issues: [],
+        workOrders: [],
+      },
+    ]);
+
+    mockPrisma.issue.findMany.mockResolvedValue([]);
+    mockPrisma.workOrder.findMany.mockResolvedValue([]);
+
+    const res = await fetch(
+      `${baseUrl}/api/buildings/b1/history?status=ACTIVE&periodLimit=1&periodOffset=0&from=2026-01-01T00:00:00.000Z&to=2026-12-31T00:00:00.000Z&includeUnassigned=false`
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.meta.statusFilter).toBe('ACTIVE');
+    expect(body.meta.periodLimit).toBe(1);
+    expect(body.meta.includeUnassigned).toBe(false);
+
+    expect(mockPrisma.buildingOperatorPeriod.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          buildingId: 'b1',
+          status: 'ACTIVE',
+          startDate: expect.objectContaining({
+            gte: new Date('2026-01-01T00:00:00.000Z'),
+            lte: new Date('2026-12-31T00:00:00.000Z'),
+          }),
+        }),
+        take: 1,
+      })
+    );
+
+    expect(mockPrisma.issue.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.workOrder.findMany).not.toHaveBeenCalled();
+  });
+
   it('POST /api/buildings/:id/transition performs continuity handoff', async () => {
     mockPrisma.building.findUnique.mockResolvedValue({
       id: 'b1',

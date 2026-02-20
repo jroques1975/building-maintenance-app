@@ -34,6 +34,18 @@ const dateRange = z.object({
   to: z.string().datetime().optional(),
 });
 
+const historyQuerySchema = z.object({
+  status: z.enum(['ACTIVE', 'PENDING', 'ENDED', 'TERMINATED', 'RENEWED']).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  periodLimit: z.coerce.number().int().min(1).max(100).optional(),
+  periodOffset: z.coerce.number().int().min(0).optional(),
+  includeUnassigned: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => (v === undefined ? true : v === 'true')),
+});
+
 const createOperatorPeriodSchema = z.object({
   operatorType: z.enum(['PM', 'HOA']),
   toOperatorId: z.string().min(1),
@@ -349,6 +361,24 @@ router.get('/buildings/:buildingId/history', authenticate, async (req, res, next
     ensureOperatorReadAccess(req.user.role);
 
     const { buildingId } = req.params;
+    const query = historyQuerySchema.parse(req.query);
+
+    const where: {
+      buildingId: string;
+      status?: 'ACTIVE' | 'PENDING' | 'ENDED' | 'TERMINATED' | 'RENEWED';
+      startDate?: { gte?: Date; lte?: Date };
+    } = { buildingId };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.from || query.to) {
+      where.startDate = {
+        ...(query.from ? { gte: new Date(query.from) } : {}),
+        ...(query.to ? { lte: new Date(query.to) } : {}),
+      };
+    }
 
     const building = await prisma.building.findUnique({
       where: { id: buildingId },
@@ -368,7 +398,7 @@ router.get('/buildings/:buildingId/history', authenticate, async (req, res, next
     }
 
     const periods = await prisma.buildingOperatorPeriod.findMany({
-      where: { buildingId },
+      where,
       select: {
         id: true,
         operatorType: true,
@@ -403,35 +433,39 @@ router.get('/buildings/:buildingId/history', authenticate, async (req, res, next
         },
       },
       orderBy: [{ startDate: 'asc' }],
+      ...(query.periodLimit ? { take: query.periodLimit } : {}),
+      ...(query.periodOffset ? { skip: query.periodOffset } : {}),
     });
 
-    const [unassignedIssues, unassignedWorkOrders] = await Promise.all([
-      prisma.issue.findMany({
-        where: { buildingId, operatorPeriodId: null },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          priority: true,
-          category: true,
-          createdAt: true,
-          completedDate: true,
-        },
-        orderBy: { createdAt: 'asc' },
-      }),
-      prisma.workOrder.findMany({
-        where: { buildingId, operatorPeriodId: null },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          priority: true,
-          createdAt: true,
-          completedDate: true,
-        },
-        orderBy: { createdAt: 'asc' },
-      }),
-    ]);
+    const [unassignedIssues, unassignedWorkOrders] = query.includeUnassigned
+      ? await Promise.all([
+          prisma.issue.findMany({
+            where: { buildingId, operatorPeriodId: null },
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              priority: true,
+              category: true,
+              createdAt: true,
+              completedDate: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          }),
+          prisma.workOrder.findMany({
+            where: { buildingId, operatorPeriodId: null },
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              priority: true,
+              createdAt: true,
+              completedDate: true,
+            },
+            orderBy: { createdAt: 'asc' },
+          }),
+        ])
+      : [[], []];
 
     res.json({
       status: 'success',
@@ -452,6 +486,15 @@ router.get('/buildings/:buildingId/history', authenticate, async (req, res, next
             workOrders: unassignedWorkOrders.length,
           },
         },
+      },
+      meta: {
+        statusFilter: query.status ?? null,
+        from: query.from ?? null,
+        to: query.to ?? null,
+        periodLimit: query.periodLimit ?? null,
+        periodOffset: query.periodOffset ?? 0,
+        includeUnassigned: query.includeUnassigned,
+        periodsReturned: periods.length,
       },
     });
   } catch (error) {

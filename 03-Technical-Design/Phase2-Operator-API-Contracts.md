@@ -135,6 +135,14 @@ Returns previous period, next period, and building continuity totals.
 ## GET `/buildings/:buildingId/history`
 Building continuity read model grouped by operator period.
 
+### Query params (optional)
+- `status`: `ACTIVE | PENDING | ENDED | TERMINATED | RENEWED`
+- `from`: ISO datetime (`startDate >= from`)
+- `to`: ISO datetime (`startDate <= to`)
+- `periodLimit`: integer `1..100`
+- `periodOffset`: integer `>= 0`
+- `includeUnassigned`: `true | false` (default `true`)
+
 ### Success 200
 ```json
 {
@@ -155,6 +163,15 @@ Building continuity read model grouped by operator period.
       "workOrders": [],
       "totals": { "issues": 1, "workOrders": 0 }
     }
+  },
+  "meta": {
+    "statusFilter": "ACTIVE",
+    "from": "2026-01-01T00:00:00.000Z",
+    "to": null,
+    "periodLimit": 20,
+    "periodOffset": 0,
+    "includeUnassigned": true,
+    "periodsReturned": 1
   }
 }
 ```
