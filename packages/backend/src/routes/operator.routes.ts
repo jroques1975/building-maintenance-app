@@ -267,7 +267,7 @@ router.post('/buildings/:buildingId/operator-periods', authenticate, async (req,
       throw new AppError(409, 'An ACTIVE operator period already exists for this building');
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       let closedPeriod = null;
 
       if (newStatus === 'ACTIVE' && activePeriod && shouldCloseActive) {
@@ -437,7 +437,7 @@ router.get('/buildings/:buildingId/history', authenticate, async (req, res, next
       status: 'success',
       data: {
         building,
-        periods: periods.map((period) => ({
+        periods: periods.map((period: any) => ({
           ...period,
           totals: {
             issues: period.issues.length,
@@ -523,7 +523,7 @@ router.post('/buildings/:buildingId/transition', authenticate, async (req, res, 
       throw new AppError(404, 'Target HOA organization not found');
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       let previousPeriod = null;
 
       if (activePeriod) {
