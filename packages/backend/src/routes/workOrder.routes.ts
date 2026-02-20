@@ -92,18 +92,24 @@ router.post('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_A
       }
     }
 
+    let linkedIssue: { id: string; operatorPeriodId: string | null } | null = null;
+
     // If issueId provided, verify it exists and belongs to tenant
     if (data.issueId) {
-      const issue = await prisma.issue.findFirst({
+      linkedIssue = await prisma.issue.findFirst({
         where: {
           id: data.issueId,
           building: {
             tenantId: req.tenant.tenantId,
           },
         },
+        select: {
+          id: true,
+          operatorPeriodId: true,
+        },
       });
 
-      if (!issue) {
+      if (!linkedIssue) {
         throw new AppError(404, 'Issue not found or not accessible');
       }
     }
@@ -123,6 +129,15 @@ router.post('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_A
       }
     }
 
+    const activeOperatorPeriod = await prisma.buildingOperatorPeriod.findFirst({
+      where: {
+        buildingId: data.buildingId,
+        status: 'ACTIVE',
+      },
+      orderBy: { startDate: 'desc' },
+      select: { id: true },
+    });
+
     const workOrder = await prisma.workOrder.create({
       data: {
         title: data.title,
@@ -131,6 +146,7 @@ router.post('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_A
         buildingId: data.buildingId,
         unitId: data.unitId,
         assignedToId: data.assignedToId,
+        operatorPeriodId: linkedIssue?.operatorPeriodId ?? activeOperatorPeriod?.id ?? null,
         priority: data.priority,
         status: data.status,
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,

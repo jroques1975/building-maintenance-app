@@ -116,6 +116,15 @@ router.post('/', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', 'MA
       }
     }
 
+    const activeOperatorPeriod = await prisma.buildingOperatorPeriod.findFirst({
+      where: {
+        buildingId: data.buildingId,
+        status: 'ACTIVE',
+      },
+      orderBy: { startDate: 'desc' },
+      select: { id: true },
+    });
+
     const issue = await prisma.issue.create({
       data: {
         title: data.title,
@@ -126,6 +135,7 @@ router.post('/', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', 'MA
         buildingId: data.buildingId,
         unitId: data.unitId,
         submittedById: req.user.userId,
+        operatorPeriodId: activeOperatorPeriod?.id ?? null,
         estimatedCost: data.estimatedCost,
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
         status: 'PENDING',
