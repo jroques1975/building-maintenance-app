@@ -16,6 +16,7 @@ type State = 'pending' | 'pass' | 'fail' | 'blocked';
 
 export default function UatCommandCenter() {
   const [state, setState] = useState<Record<string, State>>({});
+  const [exportMsg, setExportMsg] = useState('');
 
   const summary = useMemo(() => {
     const values = Object.values(state);
@@ -29,6 +30,31 @@ export default function UatCommandCenter() {
 
   function setStatus(id: string, s: State) {
     setState((prev) => ({ ...prev, [id]: s }));
+  }
+
+  const markdownSummary = useMemo(() => {
+    const lines = [
+      '# UAT Execution Summary',
+      '',
+      `- Pass: ${summary.pass}`,
+      `- Fail: ${summary.fail}`,
+      `- Blocked: ${summary.blocked}`,
+      `- Pending: ${summary.pending}`,
+      '',
+      '| ID | Scenario | Status |',
+      '|---|---|---|',
+      ...checks.map((c) => `| ${c.id} | ${c.label} | ${(state[c.id] ?? 'pending').toUpperCase()} |`),
+    ];
+    return lines.join('\n');
+  }, [state, summary]);
+
+  async function copyMarkdown() {
+    try {
+      await navigator.clipboard.writeText(markdownSummary);
+      setExportMsg('Copied markdown summary to clipboard.');
+    } catch {
+      setExportMsg('Copy failed. Select and copy manually from the box below.');
+    }
   }
 
   return (
@@ -45,6 +71,18 @@ export default function UatCommandCenter() {
 
       <div style={{ marginBottom: 12 }}>
         Quick links: <Link to='/login'>Login</Link> · <Link to='/operator-continuity'>Operator Continuity</Link> · <Link to='/issues'>Issues</Link> · <Link to='/work-orders'>Work Orders</Link>
+      </div>
+
+      <div style={{ background: 'white', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <h3>Export</h3>
+        <p style={{ marginTop: 0 }}>Copy this markdown into <code>05-Development/UAT-Execution-Sheet.md</code> or your report thread.</p>
+        <button onClick={copyMarkdown}>Copy Markdown Summary</button>
+        {exportMsg && <span style={{ marginLeft: 10, color: '#6b7280' }}>{exportMsg}</span>}
+        <textarea
+          value={markdownSummary}
+          readOnly
+          style={{ marginTop: 10, width: '100%', minHeight: 180, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12 }}
+        />
       </div>
 
       <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
