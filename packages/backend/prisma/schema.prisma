@@ -38,6 +38,8 @@ model Building {
   // MAINTENANCE HISTORY (building timeline)
   issues        Issue[]
   workOrders    WorkOrder[]
+  attachments   Attachment[]
+  comments      Comment[]
   
   // MANAGEMENT TIMELINE (legacy)
   managementHistory ManagementContract[]
@@ -142,6 +144,8 @@ model ManagementContract {
   
   building      Building  @relation(fields: [buildingId], references: [id])
   managementCompany ManagementCompany @relation(fields: [managementCompanyId], references: [id])
+  issues        Issue[]
+  workOrders    WorkOrder[]
   
   // A building can have only one active management contract at a time
   @@unique([buildingId, status], map: "building_active_contract")
@@ -174,11 +178,15 @@ model User {
   updatedAt     DateTime  @updatedAt
   
   // Relations
-  unit          Unit?     @relation(fields: [unitId], references: [id])
+  unit          Unit?     @relation("UnitOccupants", fields: [unitId], references: [id])
+  currentOccupyingUnits Unit[] @relation("CurrentTenant")
   managementCompany ManagementCompany? @relation(fields: [managementCompanyId], references: [id])
   hoaOrganization HoaOrganization? @relation(fields: [hoaOrganizationId], references: [id])
   submittedIssues Issue[] @relation("SubmittedBy")
+  assignedIssues Issue[] @relation("AssignedIssues")
   assignedWorkOrders WorkOrder[] @relation("AssignedTo")
+  attachments   Attachment[]
+  comments      Comment[]
   tenantHistory TenantHistory[]  // History of where they lived
   
   // Email must be unique globally (single sign-on across buildings/companies)
@@ -203,9 +211,13 @@ model Unit {
   
   // TENANT HISTORY (who lived here when)
   tenantHistory TenantHistory[]
+  occupants     User[]    @relation("UnitOccupants")
+  issues        Issue[]
+  workOrders    WorkOrder[]
+  attachments   Attachment[]
   currentTenantId String?  // Current occupant
-  currentTenant User? @relation(fields: [currentTenantId], references: [id])
-  
+  currentTenant User? @relation("CurrentTenant", fields: [currentTenantId], references: [id])
+
   building      Building  @relation(fields: [buildingId], references: [id])
   
   // Unit number must be unique within building
@@ -261,7 +273,7 @@ model Issue {
   building      Building  @relation(fields: [buildingId], references: [id])
   unit          Unit?     @relation(fields: [unitId], references: [id])
   submittedBy   User      @relation("SubmittedBy", fields: [submittedById], references: [id])
-  assignedTo    User?     @relation(fields: [assignedToId], references: [id])
+  assignedTo    User?     @relation("AssignedIssues", fields: [assignedToId], references: [id])
   managementPeriod ManagementContract? @relation(fields: [managementPeriodId], references: [id])
   operatorPeriod BuildingOperatorPeriod? @relation(fields: [operatorPeriodId], references: [id])
   workOrders    WorkOrder[]
@@ -484,6 +496,8 @@ model Asset {
   // MAINTENANCE HISTORY
   maintenanceHistory MaintenanceRecord[]
   repairHistory   RepairRecord[]
+  attachments    Attachment[]
+  comments       Comment[]
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
