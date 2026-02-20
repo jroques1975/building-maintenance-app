@@ -22,12 +22,14 @@ vi.mock('../prisma/client', () => ({
   prisma: mockPrisma,
 }));
 
+let mockRole = 'MANAGER';
+
 vi.mock('../middleware/auth.middleware', () => ({
   authenticate: (req: any, _res: any, next: any) => {
     req.user = {
       userId: 'u1',
       email: 'manager@test.com',
-      role: 'MANAGER',
+      role: mockRole,
       tenantId: 't1',
     };
     next();
@@ -65,6 +67,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRole = 'MANAGER';
 });
 
 describe('operator routes', () => {
@@ -91,6 +94,34 @@ describe('operator routes', () => {
     expect(body.status).toBe('success');
     expect(body.meta.count).toBe(1);
     expect(body.data.buildings[0].id).toBe('b1');
+  });
+
+  it('GET /api/portfolio/buildings denies TENANT role', async () => {
+    mockRole = 'TENANT';
+
+    const res = await fetch(`${baseUrl}/api/portfolio/buildings`);
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.message).toContain('Insufficient permissions');
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/buildings/:id/operator-periods denies MAINTENANCE role', async () => {
+    mockRole = 'MAINTENANCE';
+
+    const res = await fetch(`${baseUrl}/api/buildings/b1/operator-periods`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operatorType: 'PM',
+        startDate: '2026-03-01T00:00:00.000Z',
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.message).toContain('Insufficient permissions');
   });
 
   it('POST /api/buildings/:id/operator-periods validates payload', async () => {
