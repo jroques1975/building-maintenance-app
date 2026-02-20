@@ -1,36 +1,32 @@
-const issues = [
-  { id: 'ISS-101', title: 'AC not cooling', priority: 'HIGH', status: 'ASSIGNED', unit: 'GT-203' },
-  { id: 'ISS-102', title: 'Water leak in kitchen', priority: 'EMERGENCY', status: 'IN_PROGRESS', unit: 'GT-805' },
-  { id: 'ISS-103', title: 'Hallway light out', priority: 'LOW', status: 'RECEIVED', unit: 'COMMON' },
-];
+import { useState } from 'react';
+import { apiRequest, getToken } from '../services/api';
 
 export default function Issues() {
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
+
+  async function testIssuesEndpoint() {
+    setError('');
+    setResult('Checking...');
+    try {
+      const res = await apiRequest('/issues');
+      const total = res?.meta?.pagination?.total ?? res?.data?.issues?.length ?? 0;
+      setResult(`Connected. Issues returned: ${total}`);
+    } catch (e: any) {
+      setResult('');
+      setError(e.message);
+    }
+  }
+
   return (
     <div>
       <h2>Issues</h2>
-      <p>UAT flow: submit → assign → update status.</p>
-      <table style={{ width: '100%', background: 'white', borderRadius: 10, borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: 10 }}>ID</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Title</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Priority</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Status</th>
-            <th style={{ textAlign: 'left', padding: 10 }}>Unit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {issues.map((i) => (
-            <tr key={i.id}>
-              <td style={{ padding: 10, borderTop: '1px solid #eee' }}>{i.id}</td>
-              <td style={{ padding: 10, borderTop: '1px solid #eee' }}>{i.title}</td>
-              <td style={{ padding: 10, borderTop: '1px solid #eee' }}>{i.priority}</td>
-              <td style={{ padding: 10, borderTop: '1px solid #eee' }}>{i.status}</td>
-              <td style={{ padding: 10, borderTop: '1px solid #eee' }}>{i.unit}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {!getToken() ? <p>Please login first.</p> : <>
+        <p>Live endpoint test for /api/issues</p>
+        <button onClick={testIssuesEndpoint}>Run Issue API Check</button>
+        {result && <p style={{ color: '#065f46' }}>{result}</p>}
+        {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
+      </>}
     </div>
   );
 }
