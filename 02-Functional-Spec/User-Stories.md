@@ -20,8 +20,14 @@
 - **Frustrations:** Vague descriptions, wrong unit numbers, no history of past repairs
 - **Tech Comfort:** Uses phone for photos/messaging, prefers simple interfaces
 
+### HOA Admin (Linda)
+- **Role:** HOA board/admin overseeing one or multiple communities/buildings
+- **Goal:** Preserve building history, monitor PM performance, maintain compliance and resident service quality
+- **Frustrations:** Data loss during PM transitions, fragmented records, poor visibility across buildings
+- **Tech Comfort:** Reviews dashboards, wants exportable reports
+
 ### Property Owner (Linda)
-- **Role:** Owns portfolio of 10 mixed‑use buildings
+- **Role:** Owns portfolio of mixed‑use buildings
 - **Goal:** Reduce operational costs, maintain asset value, ensure regulatory compliance
 - **Frustrations:** Lack of visibility into maintenance spending, surprise capital expenses
 - **Tech Comfort:** Reviews dashboards, wants PDF reports
@@ -41,28 +47,33 @@
    - As a manager, I can assign a request to a technician/vendor
    - As a manager, I can update request status (Received, Assigned, In Progress, Completed)
 
-3. **Basic Notifications**
+3. **Operator Portfolio + Building Continuity**
+   - As an HOA admin or PM manager, I can view buildings in my current portfolio (single or multiple buildings)
+   - As an HOA admin, building-level history remains intact even when PM changes
+   - As an incoming PM, I can access prior building maintenance history with proper scope controls
+
+4. **Basic Notifications**
    - As a tenant, I get an SMS/email when my request status changes
    - As a technician, I get notified when assigned a new work order
 
 ### Should Have (Phase 2)
-4. **Maintenance Calendar**
+5. **Maintenance Calendar**
    - As a manager, I can schedule recurring preventive maintenance (HVAC, elevator, roof)
    - As a manager, I can assign scheduled tasks to specific vendors
    - As a manager, I get reminders for upcoming scheduled maintenance
 
-5. **Digital Logbook**
+6. **Digital Logbook**
    - As a manager, I can view repair history for any unit or system
    - As a manager, I can attach invoices/warranty documents to completed work
    - As a manager, I get alerts when warranties are about to expire
 
 ### Could Have (Phase 3)
-6. **Vendor Portal**
+7. **Vendor Portal**
    - As a vendor, I can view assigned work orders, update status, upload photos
    - As a vendor, I can submit invoices electronically
    - As a manager, I can rate vendor performance
 
-7. **Analytics Dashboard**
+8. **Analytics Dashboard**
    - As an owner, I can see maintenance costs per building/month
    - As a manager, I can identify frequently failing systems
    - As an owner, I can generate compliance reports for inspections
@@ -89,4 +100,4 @@
 - **And** the request status changes to "Assigned"
 
 ---
-*Document version: 1.0. Updated: 2026‑02‑13*
+*Document version: 1.1. Updated: 2026‑02‑20*

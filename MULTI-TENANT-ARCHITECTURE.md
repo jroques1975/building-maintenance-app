@@ -14,12 +14,18 @@
 ### **Architecture Principle:**
 ```
 Building (Permanent Entity)
-├── Management Timeline (Temporal)
+├── Operator Timeline (Temporal: HOA / PM)
 ├── Unit Directory (Physical)
 ├── Asset Registry (Physical)
 ├── Maintenance History (Accumulating)
 └── Tenant History (Temporal)
 ```
+
+### **Operator Model (HOA + Property Management):**
+- The platform supports two primary operator types: **HOA** and **Property Management Company (PM)**.
+- **Building data remains canonical at building level**, regardless of who operates the building at a given period.
+- PM and HOA each get portfolio views, but they do not own/fragment the building history.
+- Operator transitions must preserve full building continuity (issues, work orders, assets, compliance records).
 
 ---
 
@@ -32,47 +38,49 @@ model Building {
   id            String
   address       String    // Unique globally
   // Physical attributes never change
-  
-  // Temporal Management
-  managementHistory ManagementContract[]
-  currentManagement ManagementCompany?
-  
+
+  // Temporal Operators
+  operatorHistory BuildingOperatorPeriod[]
+  currentOperatorType OperatorType?
+  currentOperatorId String?
+
   // Physical Structure
   units         Unit[]
   assets        Asset[]
-  
+
   // Accumulated History
   issues        Issue[]
   workOrders    WorkOrder[]
 }
 
-// Management Company - Temporal Relationship
+// Property Management Company
 model ManagementCompany {
   id            String
   name          String
   subdomain     String    // acme-properties.buildingapp.com
-  
-  // Current Portfolio
-  buildings     Building[]
-  
-  // Contract History
-  contracts     ManagementContract[]
-  
-  // Employees
   users         User[]
 }
 
-// Management Contract - Temporal Context
-model ManagementContract {
+// HOA Organization
+model HoaOrganization {
+  id            String
+  name          String
+  users         User[]
+}
+
+// Building Operator Period - Temporal Context (HOA or PM)
+model BuildingOperatorPeriod {
   id            String
   buildingId    String
-  managementCompanyId String
+  operatorType  OperatorType   // HOA | PM
+  managementCompanyId String?
+  hoaOrganizationId String?
   startDate     DateTime
   endDate       DateTime?
   status        ContractStatus
-  
-  // A building can have only one active contract at a time
-  @@unique([buildingId, status], map: "building_active_contract")
+
+  // A building can have only one active operator period at a time
+  @@unique([buildingId, status], map: "building_active_operator_period")
 }
 
 // Unit - Physical Space
@@ -107,13 +115,13 @@ model TenantHistory {
 
 ### **Multi-Dimensional Access Control:**
 
-| Role | Building Data | Management Data | Tenant Data |
-|------|---------------|-----------------|-------------|
-| **Building Owner** | Full history | All management periods | Aggregated only |
-| **Current Manager** | Full access | Current period only | Current tenants only |
-| **Previous Manager** | Read-only (their period) | Their period only | Their period tenants |
-| **Tenant** | Their unit only | Current manager info | Their history only |
-| **Technician** | Assigned buildings | Current manager | Current assignments |
+| Role | Building Data | Operator Data | Tenant Data |
+|------|---------------|---------------|-------------|
+| **Building Owner** | Full history | All HOA/PM periods | Aggregated only |
+| **Current Operator (HOA/PM)** | Full access | Current period only | Current tenants only |
+| **Previous PM/HOA Operator** | Read-only (their period) | Their period only | Their period tenants |
+| **Tenant** | Their unit only | Current operator info | Their history only |
+| **Technician** | Assigned buildings | Current operator | Current assignments |
 
 ### **Query Filtering Example:**
 ```typescript
@@ -122,19 +130,19 @@ const allIssues = await prisma.issue.findMany({
   where: { buildingId: 'bld-123' }
 });
 
-// Current manager sees CURRENT period only  
+// Current operator (HOA/PM) sees CURRENT period only
 const currentIssues = await prisma.issue.findMany({
-  where: { 
+  where: {
     buildingId: 'bld-123',
-    managementPeriodId: currentContract.id
+    operatorPeriodId: currentOperatorPeriod.id
   }
 });
 
-// Previous manager sees THEIR period only (read-only)
+// Previous operator sees THEIR period only (read-only)
 const pastIssues = await prisma.issue.findMany({
-  where: { 
+  where: {
     buildingId: 'bld-123',
-    managementPeriodId: pastContract.id
+    operatorPeriodId: pastOperatorPeriod.id
   }
 });
 ```
@@ -268,7 +276,7 @@ CREATE TABLE management_history (
 
 ## 🔄 MANAGEMENT TRANSITION WORKFLOW
 
-### **Scenario:** Management Company A → Company B
+### **Scenario:** Operator Transition (PM A → PM B, or HOA ↔ PM)
 
 ```
 1. CONTRACT ENDS

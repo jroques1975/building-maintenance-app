@@ -1,12 +1,14 @@
 # Building Maintenance App
 
-A **multi-tenant SaaS platform** to streamline repair requests and preventive maintenance for property management companies.
+A **multi-tenant SaaS platform** to streamline repair requests and preventive maintenance for HOA and property management operators.
 
 ## 🏗️ Architecture Overview
 
 ### **Multi-Tenant SaaS Platform**
 - **Built for commercialization** from day one
 - **Tenant isolation** at database level (row-level security)
+- **Building-level canonical records** preserved across PM transitions
+- **Operator model:** HOA + Property Management (portfolio views by operator)
 - **Pricing tiers:** Starter, Professional, Enterprise
 - **Deployment options:** SaaS, Dedicated, On-premise
 

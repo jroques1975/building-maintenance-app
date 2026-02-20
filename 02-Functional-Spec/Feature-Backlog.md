@@ -26,6 +26,8 @@
 | F‑08 | Issue History | Closed issues archive with notes | P1 | Not Started | MVP | 2 |
 | F‑09 | Photo Gallery | View all photos attached to an issue | P1 | Not Started | MVP | 2 |
 | F‑10 | Search & Filter | Search by unit, date range, status | P1 | Not Started | MVP | 3 |
+| F‑23 | Multi‑Building Support | HOA/PM portfolio view across multiple buildings | P1 | Not Started | MVP | 3 |
+| F‑31 | Building Continuity Timeline | Preserve building-level history across HOA/PM operator transitions | P1 | Not Started | MVP | 4 |
 
 ---
 
@@ -62,7 +64,6 @@
 ### P3 – Polish & Scale
 | ID  | Feature | Description | Priority | Status | Phase | Est. (days) |
 |-----|---------|-------------|----------|--------|-------|-------------|
-| F‑23 | Multi‑Building Support | Manager oversees multiple properties | P3 | Not Started | Phase 3 | 3 |
 | F‑24 | Tenant Portal Web View | Basic reporting via browser (no app needed) | P3 | Not Started | Phase 3 | 4 |
 | F‑25 | Dark Mode | UI theme preference | P3 | Not Started | Phase 3 | 2 |
 | F‑26 | Offline Mode | Cache submissions when network lost | P3 | Not Started | Phase 3 | 3 |
@@ -85,13 +86,15 @@
 - **F‑01 → F‑02:** Must have registration before submission
 - **F‑02 → F‑03:** Issues must exist before dashboard can show them
 - **F‑03 → F‑04:** Dashboard needed for assignment UI
+- **F‑23 → F‑03:** Multi-building portfolio context feeds manager dashboard scope
+- **F‑31 → F‑08:** Building continuity timeline enriches issue history across operator periods
 - **F‑11 → F‑12:** Calendar must exist before notifications
 - **F‑13 → F‑21:** Logbook data feeds compliance checklists
 
 ---
 
 ## Total Estimates
-- **MVP:** 23 days (≈ 4.5 weeks with testing/deployment)
+- **MVP:** 30 days (≈ 6 weeks with testing/deployment)
 - **Phase 2:** 17 days (≈ 3.5 weeks)
 - **Phase 3:** 21 days (≈ 4 weeks)
 - **Future:** 29+ days (≈ 6+ weeks)
@@ -99,4 +102,4 @@
 **Note:** Estimates assume 1‑2 full‑stack developers. Add 20‑30% for QA, documentation, and unexpected scope.
 
 ---
-*Backlog version: 1.0. Updated: 2026‑02‑13*
+*Backlog version: 1.1. Updated: 2026‑02‑20*
