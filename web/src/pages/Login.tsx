@@ -26,17 +26,23 @@ export default function Login() {
   }
 
   return (
-    <div>
-      <h2>Login</h2>
-      <p>Real backend login (seed user prefilled).</p>
-      <form onSubmit={onSubmit} style={{ background: 'white', padding: 16, borderRadius: 10, maxWidth: 420 }}>
-        <label>Email</label>
-        <input value={email} onChange={(e) => setEmail(e.target.value)} style={{ width: '100%', margin: '6px 0 12px', padding: 8 }} />
-        <label>Password</label>
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type='password' style={{ width: '100%', margin: '6px 0 12px', padding: 8 }} />
-        {error && <div style={{ color: '#b91c1c', marginBottom: 10 }}>{error}</div>}
-        <button disabled={loading} style={{ padding: '8px 14px' }}>{loading ? 'Signing in...' : 'Sign In'}</button>
-      </form>
+    <div style={{ maxWidth: 560, margin: '0 auto' }}>
+      <div className='panel' style={{ padding: 24 }}>
+        <h2 style={{ color: '#007AFF', textAlign: 'center', marginTop: 0 }}>Sign in</h2>
+        <p style={{ color: '#6c757d', textAlign: 'center' }}>Use your role account to access the dashboard.</p>
+        <form onSubmit={onSubmit}>
+          <div style={{ marginBottom: 14 }}>
+            <label>Email</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <label>Password</label>
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type='password' />
+          </div>
+          {error && <div style={{ color: '#b91c1c', marginBottom: 10 }}>{error}</div>}
+          <button disabled={loading} style={{ width: '100%', padding: 14 }}>{loading ? 'Signing in...' : 'Sign In'}</button>
+        </form>
+      </div>
     </div>
   );
 }
