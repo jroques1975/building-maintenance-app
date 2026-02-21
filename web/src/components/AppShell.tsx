@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 
 type Role = 'TENANT' | 'MAINTENANCE' | 'MANAGER' | 'ADMIN' | 'SUPER_ADMIN' | string;
 
@@ -22,7 +23,13 @@ function getCurrentRole(): Role | null {
 }
 
 export default function AppShell() {
-  const role = getCurrentRole();
+  const location = useLocation();
+  const [role, setRole] = useState<Role | null>(getCurrentRole());
+
+  useEffect(() => {
+    setRole(getCurrentRole());
+  }, [location.pathname]);
+
   const visibleNav = navItems.filter((item) => !item.roles || (role && item.roles.includes(role)));
 
   return (
