@@ -10,6 +10,8 @@ const checks = [
   { id: 'UAT-B05', label: 'History pagination (limit/offset) works' },
   { id: 'UAT-C01', label: 'Issue bound to active operator period' },
   { id: 'UAT-C02', label: 'Work order bound from linked issue period' },
+  { id: 'UAT-C03', label: 'Role-aware UI hides unauthorized create actions' },
+  { id: 'UAT-D01', label: 'Tenant can create issue in authorized building context' },
 ];
 
 type State = 'pending' | 'pass' | 'fail' | 'blocked';

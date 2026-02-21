@@ -12,6 +12,8 @@ export default function WorkOrders() {
   const [statusFilter, setStatusFilter] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -30,6 +32,7 @@ export default function WorkOrders() {
   const canUpdateStatus = !!currentUser && ['MAINTENANCE', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
   async function loadWorkOrders(buildingId: string, status = statusFilter) {
+    setLoading(true);
     const q = new URLSearchParams({ buildingId });
     if (status) q.set('status', status);
     const res = await apiRequest(`/work-orders?${q.toString()}`);
@@ -41,6 +44,7 @@ export default function WorkOrders() {
     } else {
       setActiveWorkOrder(null);
     }
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -51,7 +55,7 @@ export default function WorkOrders() {
         setBuildings(list);
         if (list[0]?.id) {
           setSelectedBuilding(list[0].id);
-          loadWorkOrders(list[0].id).catch((e) => setError(e.message));
+          loadWorkOrders(list[0].id).catch((e) => { setError(e.message); setLoading(false); });
         }
       })
       .catch((e) => setError(e.message));
@@ -59,13 +63,14 @@ export default function WorkOrders() {
 
   useEffect(() => {
     if (!selectedBuilding) return;
-    loadWorkOrders(selectedBuilding).catch((e) => setError(e.message));
+    loadWorkOrders(selectedBuilding).catch((e) => { setError(e.message); setLoading(false); });
   }, [selectedBuilding, statusFilter]);
 
   async function submitWorkOrder(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setMessage('');
+    setSubmitting(true);
     try {
       await apiRequest('/work-orders', {
         method: 'POST',
@@ -82,6 +87,8 @@ export default function WorkOrders() {
       await loadWorkOrders(selectedBuilding);
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -107,6 +114,7 @@ export default function WorkOrders() {
     <div>
       <h2>Work Orders</h2>
       <p>Live tenant-context work-order workflows (list/create/status update).</p>
+      {!canCreate && <p style={{ color: '#6b7280' }}>Your role can view/update assigned work orders but cannot create new work orders.</p>}
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
         <label>
@@ -135,13 +143,14 @@ export default function WorkOrders() {
             <label>Priority<select value={priority} onChange={(e) => setPriority(e.target.value)}>{WO_PRIORITIES.map((p) => <option key={p}>{p}</option>)}</select></label>
             <label style={{ gridColumn: '1 / -1' }}>Description<textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={3} /></label>
           </div>
-          <button style={{ marginTop: 10 }}>Create Work Order</button>
+          <button style={{ marginTop: 10 }} disabled={submitting || !selectedBuilding}>{submitting ? 'Creating...' : 'Create Work Order'}</button>
         </form>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
         <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
           <div style={{ marginBottom: 8, fontWeight: 600 }}>Work orders found: {workOrders.length}</div>
+          {loading && <div style={{ color: '#6b7280', marginBottom: 8 }}>Loading work orders...</div>}
           {workOrders.map((w: any) => (
             <button
               key={w.id}

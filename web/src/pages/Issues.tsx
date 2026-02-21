@@ -13,6 +13,8 @@ export default function Issues() {
   const [statusFilter, setStatusFilter] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -33,6 +35,7 @@ export default function Issues() {
   const canUpdateStatus = !!currentUser && ['MAINTENANCE', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(currentUser.role);
 
   async function loadIssues(buildingId: string, status = statusFilter) {
+    setLoading(true);
     const q = new URLSearchParams({ buildingId });
     if (status) q.set('status', status);
     const res = await apiRequest(`/issues?${q.toString()}`);
@@ -44,6 +47,7 @@ export default function Issues() {
     } else {
       setActiveIssue(null);
     }
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function Issues() {
         setBuildings(list);
         if (list[0]?.id) {
           setSelectedBuilding(list[0].id);
-          loadIssues(list[0].id).catch((e) => setError(e.message));
+          loadIssues(list[0].id).catch((e) => { setError(e.message); setLoading(false); });
         }
       })
       .catch((e) => setError(e.message));
@@ -62,13 +66,14 @@ export default function Issues() {
 
   useEffect(() => {
     if (!selectedBuilding) return;
-    loadIssues(selectedBuilding).catch((e) => setError(e.message));
+    loadIssues(selectedBuilding).catch((e) => { setError(e.message); setLoading(false); });
   }, [selectedBuilding, statusFilter]);
 
   async function submitIssue(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setMessage('');
+    setSubmitting(true);
     try {
       await apiRequest('/issues', {
         method: 'POST',
@@ -88,6 +93,8 @@ export default function Issues() {
       await loadIssues(selectedBuilding);
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -113,6 +120,7 @@ export default function Issues() {
     <div>
       <h2>Issues</h2>
       <p>Live tenant-context issue workflows (list/create/status update).</p>
+      {!canUpdateStatus && <p style={{ color: '#6b7280' }}>Your role can create/view issues but cannot update status.</p>}
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
         <label>
@@ -143,13 +151,14 @@ export default function Issues() {
             <label>Priority<select value={priority} onChange={(e) => setPriority(e.target.value)}>{ISSUE_PRIORITIES.map((p) => <option key={p}>{p}</option>)}</select></label>
             <label style={{ gridColumn: '1 / -1' }}>Description<textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={3} /></label>
           </div>
-          <button style={{ marginTop: 10 }}>Create Issue</button>
+          <button style={{ marginTop: 10 }} disabled={submitting || !selectedBuilding}>{submitting ? 'Creating...' : 'Create Issue'}</button>
         </form>
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
         <div style={{ background: 'white', borderRadius: 10, padding: 12 }}>
           <div style={{ marginBottom: 8, fontWeight: 600 }}>Issues found: {issues.length}</div>
+          {loading && <div style={{ color: '#6b7280', marginBottom: 8 }}>Loading issues...</div>}
           {issues.map((i: any) => (
             <button
               key={i.id}
