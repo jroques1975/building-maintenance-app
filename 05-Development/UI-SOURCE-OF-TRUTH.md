@@ -1,7 +1,8 @@
 # UI Source of Truth
 
 ## Canonical Prototype
-- URL: `http://100.78.107.25:8088/prototype-clean.html`
+- Primary URL: `http://100.78.107.25:8088/prototype-clean.html`
+- Manager dashboard reference: `http://100.78.107.25:8088/manager-dashboard/manager-dashboard.html`
 - Added: 2026-02-21
 - Owner: Javier / Orion
 
