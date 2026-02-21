@@ -21,6 +21,7 @@ export default function Issues() {
   const [category, setCategory] = useState('PLUMBING');
   const [priority, setPriority] = useState('MEDIUM');
   const [location, setLocation] = useState('');
+  const [photos, setPhotos] = useState<File[]>([]);
 
   const currentUser = useMemo(() => {
     try {
@@ -69,12 +70,30 @@ export default function Issues() {
     loadIssues(selectedBuilding).catch((e) => { setError(e.message); setLoading(false); });
   }, [selectedBuilding, statusFilter]);
 
+  async function toDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function submitIssue(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setMessage('');
     setSubmitting(true);
     try {
+      const attachmentPayload = await Promise.all(
+        photos.slice(0, 4).map(async (f) => ({
+          filename: f.name,
+          fileType: f.type || 'image/jpeg',
+          fileSize: f.size,
+          url: await toDataUrl(f),
+        }))
+      );
+
       await apiRequest('/issues', {
         method: 'POST',
         body: JSON.stringify({
@@ -84,12 +103,14 @@ export default function Issues() {
           priority,
           location: location || undefined,
           buildingId: selectedBuilding,
+          attachments: attachmentPayload,
         }),
       });
       setMessage('Issue created successfully.');
       setTitle('');
       setDescription('');
       setLocation('');
+      setPhotos([]);
       await loadIssues(selectedBuilding);
     } catch (e: any) {
       setError(e.message);
@@ -150,6 +171,28 @@ export default function Issues() {
             <label>Category<select value={category} onChange={(e) => setCategory(e.target.value)}>{ISSUE_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
             <label>Priority<select value={priority} onChange={(e) => setPriority(e.target.value)}>{ISSUE_PRIORITIES.map((p) => <option key={p}>{p}</option>)}</select></label>
             <label style={{ gridColumn: '1 / -1' }}>Description<textarea value={description} onChange={(e) => setDescription(e.target.value)} required rows={3} /></label>
+            <label style={{ gridColumn: '1 / -1' }}>
+              Photos (up to 4)
+              <input
+                type='file'
+                accept='image/*'
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []).slice(0, 4) as File[];
+                  setPhotos(files);
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                {Array.from({ length: 4 }).map((_, idx) => {
+                  const f = photos[idx];
+                  return (
+                    <div key={idx} style={{ width: 72, height: 72, border: '2px dashed #ced4da', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#f8f9fa' }}>
+                      {f ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#6c757d' }}>+</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </label>
           </div>
           <button style={{ marginTop: 10 }} disabled={submitting || !selectedBuilding}>{submitting ? 'Creating...' : 'Create Issue'}</button>
         </form>

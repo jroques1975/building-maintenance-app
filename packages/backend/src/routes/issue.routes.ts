@@ -18,6 +18,14 @@ const createIssueSchema = z.object({
   unitId: z.string().optional(),
   estimatedCost: z.number().min(0).max(1000000).optional(),
   scheduledDate: z.string().datetime().optional(),
+  attachments: z.array(
+    z.object({
+      filename: z.string().min(1).max(255),
+      fileType: z.string().min(1).max(100),
+      fileSize: z.number().int().min(1).max(10_000_000),
+      url: z.string().min(1),
+    })
+  ).max(4).optional(),
 });
 
 const updateIssueSchema = z.object({
@@ -142,6 +150,20 @@ router.post('/', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', 'MA
         estimatedCost: data.estimatedCost,
         scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
         status: 'PENDING',
+        ...(data.attachments?.length
+          ? {
+              attachments: {
+                create: data.attachments.map((a) => ({
+                  filename: a.filename,
+                  fileType: a.fileType,
+                  fileSize: a.fileSize,
+                  url: a.url,
+                  uploadedById: req.user!.userId,
+                  buildingId: data.buildingId,
+                })),
+              },
+            }
+          : {}),
       },
       select: {
         id: true,
@@ -178,6 +200,15 @@ router.post('/', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', 'MA
             lastName: true,
             email: true,
             phone: true,
+          },
+        },
+        attachments: {
+          select: {
+            id: true,
+            filename: true,
+            fileType: true,
+            fileSize: true,
+            url: true,
           },
         },
       },
