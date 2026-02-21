@@ -81,17 +81,27 @@ router.get('/portfolio/buildings', authenticate, async (req, res, next) => {
     const where = actor.role === 'ADMIN' || actor.role === 'SUPER_ADMIN'
       ? {}
       : {
-          currentOperatorPeriod: {
-            status: 'ACTIVE' as const,
-            OR: [
-              actor.managementCompanyId
-                ? { managementCompanyId: actor.managementCompanyId }
-                : undefined,
-              actor.hoaOrganizationId
-                ? { hoaOrganizationId: actor.hoaOrganizationId }
-                : undefined,
-            ].filter(Boolean),
-          },
+          OR: [
+            actor.managementCompanyId
+              ? {
+                  currentOperatorPeriod: {
+                    status: 'ACTIVE' as const,
+                    managementCompanyId: actor.managementCompanyId,
+                  },
+                }
+              : undefined,
+            actor.hoaOrganizationId
+              ? {
+                  currentOperatorPeriod: {
+                    status: 'ACTIVE' as const,
+                    hoaOrganizationId: actor.hoaOrganizationId,
+                  },
+                }
+              : undefined,
+            actor.managementCompanyId
+              ? { currentManagementId: actor.managementCompanyId }
+              : undefined,
+          ].filter(Boolean),
         };
 
     const buildings = await prisma.building.findMany({
