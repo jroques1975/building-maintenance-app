@@ -70,7 +70,7 @@ router.post('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_A
     const building = await prisma.building.findFirst({
       where: {
         id: data.buildingId,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     });
 
@@ -100,7 +100,7 @@ router.post('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_A
         where: {
           id: data.issueId,
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         select: {
@@ -119,7 +119,7 @@ router.post('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_A
       const assignee = await prisma.user.findFirst({
         where: {
           id: data.assignedToId,
-          tenantId: req.tenant.tenantId,
+          managementCompanyId: req.tenant.tenantId,
           role: { in: ['MAINTENANCE', 'MANAGER', 'ADMIN'] },
         },
       });
@@ -236,7 +236,7 @@ router.get('/', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 'AD
     // Build where clause
     const where: any = {
       building: {
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     };
 
@@ -372,7 +372,7 @@ router.get('/my-work', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGE
 
     const where: any = {
       building: {
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
       assignedToId: req.user.userId,
     };
@@ -473,7 +473,7 @@ router.get('/:id', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       select: {
@@ -623,7 +623,7 @@ router.put('/:id', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       include: {
@@ -654,7 +654,7 @@ router.put('/:id', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 
       const assignee = await prisma.user.findFirst({
         where: {
           id: data.assignedToId,
-          tenantId: req.tenant.tenantId,
+          managementCompanyId: req.tenant.tenantId,
           role: { in: ['MAINTENANCE', 'MANAGER', 'ADMIN'] },
         },
       });
@@ -730,7 +730,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       prisma.workOrder.count({
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
       }),
@@ -739,7 +739,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         by: ['status'],
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         _count: true,
@@ -749,7 +749,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         by: ['priority'],
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         _count: true,
@@ -758,7 +758,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       prisma.workOrder.aggregate({
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         _sum: {
@@ -772,7 +772,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       prisma.workOrder.count({
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
           status: 'COMPLETED',
           completedDate: {
@@ -819,7 +819,7 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['MAINTENANCE', '
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       select: {

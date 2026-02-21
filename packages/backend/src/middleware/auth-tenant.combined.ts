@@ -89,25 +89,31 @@ export const authenticateWithTenant = async (
       throw new AppError(403, 'User not associated with any tenant');
     }
 
-    // Verify tenant exists and is active
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: payload.tenantId },
-      select: { id: true, plan: true, status: true, name: true },
-    });
+    // Verify tenant compatibility entity exists (management company or HOA)
+    const [managementCompany, hoaOrganization] = await Promise.all([
+      prisma.managementCompany.findUnique({
+        where: { id: payload.tenantId },
+        select: { id: true, plan: true, status: true },
+      }),
+      prisma.hoaOrganization.findUnique({
+        where: { id: payload.tenantId },
+        select: { id: true, status: true },
+      }),
+    ]);
 
-    if (!tenant) {
+    if (!managementCompany && !hoaOrganization) {
       throw new AppError(403, 'Tenant not found');
     }
 
-    // Check tenant status
-    if (tenant.status !== 'ACTIVE' && tenant.status !== 'TRIAL') {
-      throw new AppError(403, `Tenant account is ${tenant.status.toLowerCase()}`);
+    const status = managementCompany?.status || hoaOrganization?.status;
+    if (status !== 'ACTIVE' && status !== 'TRIAL') {
+      throw new AppError(403, `Tenant account is ${String(status).toLowerCase()}`);
     }
 
     // Set tenant context
     req.tenant = {
       tenantId: payload.tenantId,
-      tenantPlan: payload.tenantPlan || tenant.plan,
+      tenantPlan: payload.tenantPlan || managementCompany?.plan || 'PROFESSIONAL',
       userId: payload.userId,
       userRole: payload.role,
       buildingId: payload.buildingId,
@@ -302,15 +308,22 @@ export const optionalAuthenticate = async (
 
       // Set tenant context if tenantId exists
       if (payload.tenantId) {
-        const tenant = await prisma.tenant.findUnique({
-          where: { id: payload.tenantId },
-          select: { id: true, plan: true, status: true },
-        });
+        const [managementCompany, hoaOrganization] = await Promise.all([
+          prisma.managementCompany.findUnique({
+            where: { id: payload.tenantId },
+            select: { id: true, plan: true, status: true },
+          }),
+          prisma.hoaOrganization.findUnique({
+            where: { id: payload.tenantId },
+            select: { id: true, status: true },
+          }),
+        ]);
 
-        if (tenant && (tenant.status === 'ACTIVE' || tenant.status === 'TRIAL')) {
+        const status = managementCompany?.status || hoaOrganization?.status;
+        if ((managementCompany || hoaOrganization) && (status === 'ACTIVE' || status === 'TRIAL')) {
           req.tenant = {
             tenantId: payload.tenantId,
-            tenantPlan: payload.tenantPlan || tenant.plan,
+            tenantPlan: payload.tenantPlan || managementCompany?.plan || 'PROFESSIONAL',
             userId: payload.userId,
             userRole: payload.role,
             buildingId: payload.buildingId,
@@ -346,7 +359,7 @@ export const checkTenantPlan = async (
   try {
     // Check building count limit based on plan
     const buildingCount = await prisma.building.count({
-      where: { tenantId: req.tenant.tenantId },
+      where: { currentManagementId: req.tenant.tenantId },
     });
 
     const planLimits: Record<string, number> = {

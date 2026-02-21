@@ -96,6 +96,7 @@ router.post('/register', async (req, res, next) => {
       userId: user.id,
       email: user.email,
       role: user.role,
+      tenantId: (user as any).managementCompanyId || (user as any).hoaOrganizationId || undefined,
       buildingId: user.buildingId || undefined,
     });
 
@@ -131,6 +132,8 @@ router.post('/login', async (req, res, next) => {
         role: true,
         buildingId: true,
         apartment: true,
+        managementCompanyId: true,
+        hoaOrganizationId: true,
         // In a real app, we'd include password hash here
       },
     });
@@ -152,6 +155,7 @@ router.post('/login', async (req, res, next) => {
       userId: user.id,
       email: user.email,
       role: user.role,
+      tenantId: (user as any).managementCompanyId || (user as any).hoaOrganizationId || undefined,
       buildingId: user.buildingId || undefined,
     });
 

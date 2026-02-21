@@ -66,7 +66,7 @@ router.post('/', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', 'MA
     const building = await prisma.building.findFirst({
       where: {
         id: data.buildingId,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     });
 
@@ -210,7 +210,7 @@ router.get('/', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 'AD
     // Build where clause based on tenant and user role
     const where: any = {
       building: {
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     };
 
@@ -364,7 +364,7 @@ router.get('/my-issues', authenticateWithTenant, authorize(['TENANT', 'MAINTENAN
 
     const where: any = {
       building: {
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     };
 
@@ -470,7 +470,7 @@ router.get('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       select: {
@@ -634,7 +634,7 @@ router.put('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       include: {
@@ -682,7 +682,7 @@ router.put('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
       const assignee = await prisma.user.findFirst({
         where: {
           id: data.assignedToId,
-          tenantId: req.tenant.tenantId,
+          managementCompanyId: req.tenant.tenantId,
         },
       });
 
@@ -754,7 +754,7 @@ router.get('/:id/comments', authenticateWithTenant, authorize(['TENANT', 'MAINTE
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       select: {
@@ -832,7 +832,7 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['TENANT', 'MAINT
       where: {
         id: req.params.id,
         building: {
-          tenantId: req.tenant.tenantId,
+          currentManagementId: req.tenant.tenantId,
         },
       },
       select: {
@@ -905,7 +905,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       prisma.issue.count({
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
       }),
@@ -914,7 +914,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         by: ['status'],
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         _count: true,
@@ -924,7 +924,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         by: ['priority'],
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         _count: true,
@@ -934,7 +934,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         by: ['category'],
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
         },
         _count: true,
@@ -943,7 +943,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       prisma.issue.count({
         where: {
           building: {
-            tenantId: req.tenant.tenantId,
+            currentManagementId: req.tenant.tenantId,
           },
           createdAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
