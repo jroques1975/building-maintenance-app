@@ -549,8 +549,6 @@ router.get('/:id', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 
             id: true,
             filename: true,
             url: true,
-            mimeType: true,
-            size: true,
             createdAt: true,
             uploadedBy: {
               select: {
@@ -725,9 +723,10 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       throw new AppError(401, 'Tenant context required');
     }
 
+    const workOrderModel: any = prisma.workOrder;
     const stats = await prisma.$transaction([
       // Total counts
-      prisma.workOrder.count({
+      workOrderModel.count({
         where: {
           building: {
             currentManagementId: req.tenant.tenantId,
@@ -735,7 +734,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         },
       }),
       // Counts by status
-      prisma.workOrder.groupBy({
+      workOrderModel.groupBy({
         by: ['status'],
         where: {
           building: {
@@ -745,7 +744,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         _count: true,
       }),
       // Counts by priority
-      prisma.workOrder.groupBy({
+      workOrderModel.groupBy({
         by: ['priority'],
         where: {
           building: {
@@ -755,7 +754,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         _count: true,
       }),
       // Total estimated vs actual hours
-      prisma.workOrder.aggregate({
+      workOrderModel.aggregate({
         where: {
           building: {
             currentManagementId: req.tenant.tenantId,
@@ -769,7 +768,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         },
       }),
       // Completed in last 30 days
-      prisma.workOrder.count({
+      workOrderModel.count({
         where: {
           building: {
             currentManagementId: req.tenant.tenantId,

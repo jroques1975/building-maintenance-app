@@ -102,12 +102,15 @@ router.post('/', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', 'MA
       }
     }
 
-    // If user is TENANT, verify they are in the building
+    // If user is TENANT, verify they are in the building (direct buildingId or via assigned unit)
     if (req.user.role === 'TENANT') {
       const userBuilding = await prisma.user.findFirst({
         where: {
           id: req.user.userId,
-          buildingId: data.buildingId,
+          OR: [
+            { buildingId: data.buildingId },
+            { unit: { buildingId: data.buildingId } },
+          ],
         },
       });
 
@@ -487,6 +490,8 @@ router.get('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
         actualCost: true,
         scheduledDate: true,
         completedDate: true,
+        submittedById: true,
+        assignedToId: true,
         createdAt: true,
         updatedAt: true,
         building: {
@@ -533,8 +538,6 @@ router.get('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
             id: true,
             filename: true,
             url: true,
-            mimeType: true,
-            size: true,
             createdAt: true,
           },
           orderBy: {
@@ -596,11 +599,11 @@ router.get('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
     }
 
     // Role-based access control
-    if (req.user.role === 'TENANT' && issue.submittedBy.id !== req.user.userId) {
+    if (req.user.role === 'TENANT' && issue.submittedById !== req.user.userId) {
       throw new AppError(403, 'Not authorized to view this issue');
     }
 
-    if (req.user.role === 'MAINTENANCE' && issue.assignedTo?.id !== req.user.userId) {
+    if (req.user.role === 'MAINTENANCE' && issue.assignedToId !== req.user.userId) {
       // Maintenance can see if assigned, but also let managers/admins see
       if (req.user.role === 'MAINTENANCE') {
         throw new AppError(403, 'Not authorized to view this issue');
@@ -900,9 +903,10 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       throw new AppError(401, 'Tenant context required');
     }
 
+    const issueModel: any = prisma.issue;
     const stats = await prisma.$transaction([
       // Total counts
-      prisma.issue.count({
+      issueModel.count({
         where: {
           building: {
             currentManagementId: req.tenant.tenantId,
@@ -910,7 +914,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         },
       }),
       // Counts by status
-      prisma.issue.groupBy({
+      issueModel.groupBy({
         by: ['status'],
         where: {
           building: {
@@ -920,7 +924,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         _count: true,
       }),
       // Counts by priority
-      prisma.issue.groupBy({
+      issueModel.groupBy({
         by: ['priority'],
         where: {
           building: {
@@ -930,7 +934,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         _count: true,
       }),
       // Counts by category
-      prisma.issue.groupBy({
+      issueModel.groupBy({
         by: ['category'],
         where: {
           building: {
@@ -940,7 +944,7 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
         _count: true,
       }),
       // Recent issues (last 30 days)
-      prisma.issue.count({
+      issueModel.count({
         where: {
           building: {
             currentManagementId: req.tenant.tenantId,

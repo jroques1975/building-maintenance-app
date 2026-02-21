@@ -13,10 +13,13 @@ async function main() {
   await prisma.attachment.deleteMany();
   await prisma.workOrder.deleteMany();
   await prisma.issue.deleteMany();
+  await prisma.maintenanceRecord.deleteMany();
+  await prisma.repairRecord.deleteMany();
   await prisma.tenantHistory.deleteMany();
   await prisma.asset.deleteMany();
   await prisma.unit.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.buildingOperatorPeriod.deleteMany();
   await prisma.managementContract.deleteMany();
   await prisma.building.deleteMany();
   await prisma.managementCompany.deleteMany();

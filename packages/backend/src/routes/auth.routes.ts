@@ -91,12 +91,18 @@ router.post('/register', async (req, res, next) => {
       },
     });
 
+    const tenantContextId =
+      (user as any).managementCompanyId ||
+      (user as any).hoaOrganizationId ||
+      (user as any).unit?.building?.currentManagementId ||
+      undefined;
+
     // Generate JWT token
     const token = AuthService.generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
-      tenantId: (user as any).managementCompanyId || (user as any).hoaOrganizationId || undefined,
+      tenantId: tenantContextId,
       buildingId: user.buildingId || undefined,
     });
 
@@ -134,6 +140,15 @@ router.post('/login', async (req, res, next) => {
         apartment: true,
         managementCompanyId: true,
         hoaOrganizationId: true,
+        unit: {
+          select: {
+            building: {
+              select: {
+                currentManagementId: true,
+              },
+            },
+          },
+        },
         // In a real app, we'd include password hash here
       },
     });
@@ -150,12 +165,18 @@ router.post('/login', async (req, res, next) => {
       throw new AppError(401, 'Invalid email or password');
     }
 
+    const tenantContextId =
+      (user as any).managementCompanyId ||
+      (user as any).hoaOrganizationId ||
+      (user as any).unit?.building?.currentManagementId ||
+      undefined;
+
     // Generate JWT token
     const token = AuthService.generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
-      tenantId: (user as any).managementCompanyId || (user as any).hoaOrganizationId || undefined,
+      tenantId: tenantContextId,
       buildingId: user.buildingId || undefined,
     });
 

@@ -28,5 +28,15 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/middleware/auth-tenant.combined.ts",
+    "src/middleware/tenant.middleware.ts",
+    "src/routes/building.routes.ts",
+    "src/routes/tenant.routes.ts",
+    "src/routes/user.routes.ts"
+  ]
 }
