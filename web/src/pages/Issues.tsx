@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest, getToken } from '../services/api';
 
 const ISSUE_CATEGORIES = ['PLUMBING', 'HVAC', 'ELECTRICAL', 'APPLIANCE', 'STRUCTURAL', 'SECURITY', 'OTHER'];
@@ -22,6 +22,7 @@ export default function Issues() {
   const [priority, setPriority] = useState('MEDIUM');
   const [location, setLocation] = useState('');
   const [photos, setPhotos] = useState<File[]>([]);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const currentUser = useMemo(() => {
     try {
@@ -77,6 +78,18 @@ export default function Issues() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  function addPhoto(file?: File) {
+    if (!file) return;
+    setPhotos((prev) => {
+      if (prev.length >= 4) return prev;
+      return [...prev, file];
+    });
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   }
 
   async function submitIssue(e: React.FormEvent) {
@@ -174,24 +187,35 @@ export default function Issues() {
             <label style={{ gridColumn: '1 / -1' }}>
               Photos (up to 4)
               <input
+                ref={photoInputRef}
                 type='file'
                 accept='image/*'
-                multiple
+                style={{ display: 'none' }}
                 onChange={(e) => {
-                  const files = Array.from(e.target.files || []).slice(0, 4) as File[];
-                  setPhotos(files);
+                  addPhoto((e.target.files || [])[0]);
+                  e.currentTarget.value = '';
                 }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                 {Array.from({ length: 4 }).map((_, idx) => {
                   const f = photos[idx];
                   return (
-                    <div key={idx} style={{ width: 72, height: 72, border: '2px dashed #ced4da', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#f8f9fa' }}>
-                      {f ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#6c757d' }}>+</span>}
-                    </div>
+                    <button
+                      type='button'
+                      key={idx}
+                      onClick={() => {
+                        if (f) removePhoto(idx);
+                        else photoInputRef.current?.click();
+                      }}
+                      style={{ width: 72, height: 72, padding: 0, border: '2px dashed #ced4da', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: '#f8f9fa', color: '#6c757d' }}
+                      title={f ? 'Click to remove photo' : 'Add photo to next open slot'}
+                    >
+                      {f ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>+</span>}
+                    </button>
                   );
                 })}
               </div>
+              <div style={{ fontSize: 12, color: '#6c757d', marginTop: 6 }}>Click an empty slot to add. Click a filled slot to remove.</div>
             </label>
           </div>
           <button style={{ marginTop: 10 }} disabled={submitting || !selectedBuilding}>{submitting ? 'Creating...' : 'Create Issue'}</button>
