@@ -17,11 +17,13 @@ import {
   CircularProgress,
 } from '@mui/material'
 import { Add as AddIcon, Assignment as IssueIcon } from '@mui/icons-material'
+import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../store'
 import issueService from '../services/issueService'
 import { Issue, Priority } from '@shared/types'
 
 const TenantDashboard: React.FC = () => {
+  const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
   const [openNewIssue, setOpenNewIssue] = useState(false)
   const [newIssue, setNewIssue] = useState({
@@ -213,7 +215,9 @@ const TenantDashboard: React.FC = () => {
                       />
                     </Box>
                   </Box>
-                  <Button size="small" variant="text">View Details</Button>
+                  <Button size="small" variant="text" onClick={() => navigate(`/issues/${issue.id}`)}>
+                    View Details
+                  </Button>
                 </CardContent>
               </Card>
             </Grid>

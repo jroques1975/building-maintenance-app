@@ -7,6 +7,7 @@ import { verifyAuth, getCurrentUser } from './store/authSlice'
 import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import IssueDetailPage from './pages/IssueDetailPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
@@ -70,6 +71,14 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <DashboardPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/issues/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <IssueDetailPage />
             </Layout>
           </ProtectedRoute>
         } />
