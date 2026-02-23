@@ -26,9 +26,9 @@ const QuickActions: React.FC = () => {
   const handleExport = () => {
     // Determine current filter type for metadata (matches DashboardPage mapping)
     let filterType = 'all'
-    if (filter.assigneeId && user && filter.assigneeId === user.id) {
+    if (filter.assignedToId && user && filter.assignedToId === user.id) {
       filterType = 'mine'
-    } else if (filter.priority === 'high') {
+    } else if (filter.priority === 'URGENT') {
       filterType = 'urgent'
     }
     

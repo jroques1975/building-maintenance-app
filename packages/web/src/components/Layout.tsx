@@ -6,11 +6,9 @@ import {
   Typography, 
   Box, 
   Container, 
-  Button, 
   IconButton,
   Menu,
   MenuItem,
-  Avatar,
   Chip
 } from '@mui/material'
 import { Logout as LogoutIcon, AccountCircle } from '@mui/icons-material'

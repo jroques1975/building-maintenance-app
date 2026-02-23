@@ -16,7 +16,6 @@ const mockIssues: Issue[] = [
     status: 'IN_PROGRESS',
     location: 'Living room',
     buildingId: 'building-1',
-    unitNumber: 'OVT1A',
     submittedById: 'user-1',
     assignedToId: 'user-3',
     estimatedCost: 350,
@@ -31,6 +30,7 @@ const mockIssues: Issue[] = [
 
 const issueService = {
   async getIssues(filter: IssueFilter = {}): Promise<PaginatedResponse<Issue>> {
+
     if (ENABLE_MOCK) {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -126,9 +126,9 @@ const issueService = {
         status: 'PENDING',
         createdAt: new Date(),
         updatedAt: new Date(),
-        actualCost: null,
-        completedDate: null,
-        scheduledDate: issueData.scheduledDate || null,
+        actualCost: undefined,
+        completedDate: undefined,
+        scheduledDate: issueData.scheduledDate,
         assignedToId: undefined,
         submittedById: 'current-user',
       };

@@ -10,7 +10,6 @@ import {
   Chip,
   Divider,
   TextField,
-  MenuItem,
   Stack,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
@@ -37,12 +36,12 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-      case 'emergency':
+      case 'URGENT':
+      case 'HIGH':
         return 'error'
-      case 'medium':
+      case 'MEDIUM':
         return 'warning'
-      case 'low':
+      case 'LOW':
         return 'success'
       default:
         return 'default'
@@ -51,14 +50,18 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'open':
-        return 'Open'
-      case 'in_progress':
+      case 'PENDING':
+        return 'Pending'
+      case 'IN_REVIEW':
+        return 'In Review'
+      case 'IN_PROGRESS':
         return 'In Progress'
-      case 'completed':
+      case 'SCHEDULED':
+        return 'Scheduled'
+      case 'COMPLETED':
         return 'Completed'
-      case 'closed':
-        return 'Closed'
+      case 'CANCELLED':
+        return 'Cancelled'
       default:
         return status
     }
@@ -66,10 +69,10 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'in_progress':
+      case 'IN_PROGRESS':
         return '🟡'
-      case 'completed':
-      case 'closed':
+      case 'COMPLETED':
+      case 'CANCELLED':
         return '✅'
       default:
         return '⚪'
@@ -77,9 +80,9 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
   }
 
   const handleAssign = () => {
-    const technician = prompt('Assign to technician (Tech J., Plumber M., etc.):', issue.assigneeId || '')
+    const technician = prompt('Assign to technician (Tech J., Plumber M., etc.):', issue.assignedToId || '')
     if (technician !== null) {
-      onAction('assign', issue.id, { assigneeId: technician })
+      onAction('assign', issue.id, { assignedToId: technician })
     }
   }
 
@@ -148,7 +151,7 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                 Unit
               </Typography>
               <Typography variant="body1">
-                {issue.unitNumber || 'N/A'}
+                {issue.unitId || 'N/A'}
               </Typography>
             </Box>
             <Box>
@@ -183,7 +186,7 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
                 Assigned To
               </Typography>
               <Typography variant="body1">
-                {issue.assigneeId || 'Unassigned'}
+                {issue.assignedToId || 'Unassigned'}
               </Typography>
             </Box>
             <Box>

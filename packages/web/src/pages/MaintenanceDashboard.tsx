@@ -28,7 +28,7 @@ const MaintenanceDashboard: React.FC = () => {
     { id: '4', title: 'Elevator Inspection', status: 'COMPLETED', priority: 'MEDIUM', completedDate: '2024-02-18', progress: 100 },
   ]
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)
   }
 

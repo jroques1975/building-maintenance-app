@@ -35,7 +35,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
       value: `${stats.tenantSatisfaction}%`,
       target: '90%',
       progress: stats.tenantSatisfaction,
-      status: stats.tenantSatisfaction >= 90 ? 'good' : 'warning' as const,
+      status: (stats.tenantSatisfaction >= 90 ? 'good' : 'warning') as 'good' | 'warning',
       description: 'Based on post-resolution surveys',
     },
     {
@@ -43,7 +43,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
       value: `$${stats.costPerUnit}`,
       target: '$50',
       progress: (stats.costPerUnit / 50) * 100,
-      status: stats.costPerUnit <= 50 ? 'good' : 'warning' as const,
+      status: (stats.costPerUnit <= 50 ? 'good' : 'warning') as 'good' | 'warning',
       description: 'Monthly maintenance cost per unit',
     },
   ]

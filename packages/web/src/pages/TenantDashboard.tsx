@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   Box,
   Typography,
@@ -14,9 +14,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  CircularProgress,
 } from '@mui/material'
 import { Add as AddIcon, Assignment as IssueIcon } from '@mui/icons-material'
 import { useAppSelector } from '../store'
+import issueService from '../services/issueService'
+import { Issue, Priority } from '@shared/types'
 
 const TenantDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth)
@@ -25,24 +28,63 @@ const TenantDashboard: React.FC = () => {
     title: '',
     description: '',
     category: 'GENERAL',
-    priority: 'MEDIUM',
+    priority: 'MEDIUM' as Priority,
   })
 
-  // Mock tenant issues
-  const mockIssues = [
-    { id: '1', title: 'AC not cooling', status: 'IN_PROGRESS', createdAt: '2024-02-19', priority: 'URGENT' },
-    { id: '2', title: 'Leaking faucet', status: 'SCHEDULED', createdAt: '2024-02-18', priority: 'HIGH' },
-    { id: '3', title: 'Broken light fixture', status: 'COMPLETED', createdAt: '2024-02-15', priority: 'MEDIUM' },
-  ]
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [issues, setIssues] = useState<Issue[]>([])
+
+  const refresh = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await issueService.getMyIssues()
+      setIssues(res.data)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load your requests')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    refresh()
+  }, [])
+
+  const stats = useMemo(() => {
+    const total = issues.length
+    const inProgress = issues.filter(i => i.status === 'IN_PROGRESS').length
+    const scheduled = issues.filter(i => i.status === 'SCHEDULED').length
+    const completed = issues.filter(i => i.status === 'COMPLETED').length
+    return { total, inProgress, scheduled, completed }
+  }, [issues])
 
   const handleOpenNewIssue = () => setOpenNewIssue(true)
   const handleCloseNewIssue = () => setOpenNewIssue(false)
 
-  const handleSubmitIssue = () => {
-    console.log('Submit new issue:', newIssue)
-    // In real implementation, dispatch an action to create issue
-    handleCloseNewIssue()
-    setNewIssue({ title: '', description: '', category: 'GENERAL', priority: 'MEDIUM' })
+  const handleSubmitIssue = async () => {
+    try {
+      setError(null)
+      const buildingId = user?.buildingId
+      if (!buildingId) {
+        throw new Error('Your account is missing a building assignment. Please contact management.')
+      }
+
+      await issueService.createIssue({
+        title: newIssue.title,
+        description: newIssue.description,
+        category: newIssue.category,
+        priority: newIssue.priority,
+        buildingId,
+      })
+
+      handleCloseNewIssue()
+      setNewIssue({ title: '', description: '', category: 'GENERAL', priority: 'MEDIUM' as Priority })
+      await refresh()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to submit request')
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -79,7 +121,7 @@ const TenantDashboard: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
             <Typography variant="h3" color="primary">
-              3
+              {stats.total}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Total Issues
@@ -133,44 +175,54 @@ const TenantDashboard: React.FC = () => {
       </Box>
 
       {/* Issues List */}
-      <Grid container spacing={3}>
-        {mockIssues.map((issue) => (
-          <Grid item xs={12} key={issue.id}>
-            <Card variant="outlined">
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Box>
-                    <Typography variant="h6" gutterBottom>
-                      <IssueIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                      {issue.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                      Submitted on {issue.createdAt}
-                    </Typography>
+      {isLoading ? (
+        <Box sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      ) : (
+        <Grid container spacing={3}>
+          {issues.map((issue) => (
+            <Grid item xs={12} key={issue.id}>
+              <Card variant="outlined">
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography variant="h6" gutterBottom>
+                        <IssueIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                        {issue.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Submitted on {new Date(issue.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Chip
+                        label={issue.status}
+                        color={getStatusColor(issue.status) as any}
+                        size="small"
+                      />
+                      <Chip
+                        label={issue.priority}
+                        color={getPriorityColor(issue.priority) as any}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Chip 
-                      label={issue.status} 
-                      color={getStatusColor(issue.status) as any}
-                      size="small"
-                    />
-                    <Chip 
-                      label={issue.priority} 
-                      color={getPriorityColor(issue.priority) as any}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Box>
-                </Box>
-                <Button size="small" variant="text">View Details</Button>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                  <Button size="small" variant="text">View Details</Button>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
       {/* No Issues Message */}
-      {mockIssues.length === 0 && (
+      {!isLoading && !error && issues.length === 0 && (
         <Alert severity="info" sx={{ mt: 3 }}>
           You haven't submitted any maintenance requests yet. Click "New Request" to get started.
         </Alert>
@@ -223,7 +275,7 @@ const TenantDashboard: React.FC = () => {
             SelectProps={{ native: true }}
             variant="outlined"
             value={newIssue.priority}
-            onChange={(e) => setNewIssue({...newIssue, priority: e.target.value})}
+            onChange={(e) => setNewIssue({ ...newIssue, priority: e.target.value as any as import('@shared/types').Priority })}
           >
             <option value="LOW">Low</option>
             <option value="MEDIUM">Medium</option>

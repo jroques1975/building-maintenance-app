@@ -3,7 +3,6 @@ import { Issue, IssueFilter } from '@shared/types'
 // In a real implementation, this would make actual API calls
 // For now, we're using mock data
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 export const dashboardService = {
   async getDashboardData() {
@@ -31,7 +30,7 @@ export const dashboardService = {
     }
   },
 
-  async getIssues(filter: IssueFilter = {}) {
+  async getIssues(_filter: IssueFilter = {}) {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 300))
     

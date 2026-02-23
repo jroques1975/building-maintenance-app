@@ -26,12 +26,12 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-      case 'emergency':
+      case 'URGENT':
+      case 'HIGH':
         return 'error'
-      case 'medium':
+      case 'MEDIUM':
         return 'warning'
-      case 'low':
+      case 'LOW':
         return 'success'
       default:
         return 'default'
@@ -40,10 +40,10 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'in_progress':
+      case 'IN_PROGRESS':
         return '🟡'
-      case 'completed':
-      case 'closed':
+      case 'COMPLETED':
+      case 'CANCELLED':
         return '✅'
       default:
         return '⚪'
@@ -125,16 +125,16 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter }
                         {getStatusIcon(issue.status)} #{issue.id} {issue.title}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {issue.unitNumber} • {new Date(issue.createdAt).toLocaleDateString()} • {issue.category}
+                        {issue.unitId} • {new Date(issue.createdAt).toLocaleDateString()} • {issue.category}
                       </Typography>
-                      {issue.assigneeId && (
+                      {issue.assignedToId && (
                         <Typography variant="caption" color="text.secondary">
-                          Assigned to: {issue.assigneeId}
+                          Assigned to: {issue.assignedToId}
                         </Typography>
                       )}
                     </Box>
                     <Chip
-                      label={issue.priority.toLowerCase()}
+                      label={issue.priority}
                       size="small"
                       color={getPriorityColor(issue.priority)}
                       sx={{ textTransform: 'capitalize' }}

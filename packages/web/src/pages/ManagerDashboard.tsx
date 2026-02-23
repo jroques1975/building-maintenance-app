@@ -21,11 +21,11 @@ const DashboardPage: React.FC = () => {
     let filterObj = {}
     switch (newFilter) {
       case 'urgent':
-        filterObj = { priority: 'high' }
+        filterObj = { priority: 'URGENT' }
         break
       case 'mine':
         // Filter issues assigned to current user
-        filterObj = { assigneeId: user?.id || '' }
+        filterObj = { assignedToId: user?.id || '' }
         break
       case 'all':
       default:
@@ -36,9 +36,9 @@ const DashboardPage: React.FC = () => {
 
   // Compute current filter string from filter object for UI display
   const getCurrentFilterString = () => {
-    if (filter.assigneeId && user && filter.assigneeId === user.id) {
+    if (filter.assignedToId && user && filter.assignedToId === user.id) {
       return 'mine'
-    } else if (filter.priority === 'high') {
+    } else if (filter.priority === 'URGENT') {
       return 'urgent'
     } else {
       return 'all'
