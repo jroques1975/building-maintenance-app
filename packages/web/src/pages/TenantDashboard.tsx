@@ -68,9 +68,14 @@ const TenantDashboard: React.FC = () => {
   const handleSubmitIssue = async () => {
     try {
       setError(null)
-      const buildingId = user?.buildingId
+      // Tenants may not have user.buildingId set; building is inferred via unit/building relationship.
+      // For now, use the buildingId from one of the tenant's existing issues (same tenant scope).
+      const my = await issueService.getMyIssues()
+      const buildingId = my.data[0]?.buildingId
+      const unitId = my.data[0]?.unitId
+
       if (!buildingId) {
-        throw new Error('Your account is missing a building assignment. Please contact management.')
+        throw new Error('We could not determine your building. Ask management to assign your unit/building.')
       }
 
       await issueService.createIssue({
@@ -79,6 +84,7 @@ const TenantDashboard: React.FC = () => {
         category: newIssue.category,
         priority: newIssue.priority,
         buildingId,
+        unitId: unitId || undefined,
       })
 
       handleCloseNewIssue()
