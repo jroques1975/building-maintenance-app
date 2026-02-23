@@ -29,7 +29,7 @@ const TenantDashboard: React.FC = () => {
   const [newIssue, setNewIssue] = useState({
     title: '',
     description: '',
-    category: 'GENERAL',
+    category: 'OTHER',
     priority: 'MEDIUM' as Priority,
   })
 
@@ -85,7 +85,7 @@ const TenantDashboard: React.FC = () => {
       })
 
       handleCloseNewIssue()
-      setNewIssue({ title: '', description: '', category: 'GENERAL', priority: 'MEDIUM' as Priority })
+      setNewIssue({ title: '', description: '', category: 'OTHER', priority: 'MEDIUM' as Priority })
       await refresh()
     } catch (e: any) {
       setError(e?.message || 'Failed to submit request')
@@ -268,11 +268,15 @@ const TenantDashboard: React.FC = () => {
             value={newIssue.category}
             onChange={(e) => setNewIssue({...newIssue, category: e.target.value})}
           >
-            <option value="GENERAL">General</option>
             <option value="HVAC">HVAC</option>
             <option value="PLUMBING">Plumbing</option>
             <option value="ELECTRICAL">Electrical</option>
             <option value="APPLIANCE">Appliance</option>
+            <option value="STRUCTURAL">Structural</option>
+            <option value="SECURITY">Security</option>
+            <option value="CLEANING">Cleaning</option>
+            <option value="PEST_CONTROL">Pest Control</option>
+            <option value="OTHER">Other</option>
           </TextField>
           <TextField
             margin="dense"
