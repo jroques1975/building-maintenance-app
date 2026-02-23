@@ -142,6 +142,9 @@ router.post('/login', async (req, res, next) => {
         hoaOrganizationId: true,
         unit: {
           select: {
+            id: true,
+            buildingId: true,
+            unitNumber: true,
             building: {
               select: {
                 currentManagementId: true,
@@ -171,19 +174,26 @@ router.post('/login', async (req, res, next) => {
       (user as any).unit?.building?.currentManagementId ||
       undefined;
 
+    // Normalize tenant building context for TENANT users:
+    // tenants are typically assigned via unitId, not user.buildingId.
+    const effectiveBuildingId = user.buildingId || (user as any).unit?.buildingId || undefined;
+
     // Generate JWT token
     const token = AuthService.generateToken({
       userId: user.id,
       email: user.email,
       role: user.role,
       tenantId: tenantContextId,
-      buildingId: user.buildingId || undefined,
+      buildingId: effectiveBuildingId,
     });
 
     res.json({
       status: 'success',
       data: {
-        user,
+        user: {
+          ...user,
+          buildingId: effectiveBuildingId ?? null,
+        },
         token,
       },
     });
@@ -216,6 +226,13 @@ router.get('/me', authenticate, async (req, res, next) => {
         apartment: true,
         createdAt: true,
         updatedAt: true,
+        unit: {
+          select: {
+            id: true,
+            buildingId: true,
+            unitNumber: true,
+          },
+        },
         building: {
           select: {
             id: true,
@@ -232,9 +249,17 @@ router.get('/me', authenticate, async (req, res, next) => {
       throw new AppError(404, 'User not found');
     }
 
+    // Normalize tenant building context
+    const effectiveBuildingId = (user as any).buildingId || (user as any).unit?.buildingId || null;
+
     res.json({
       status: 'success',
-      data: { user },
+      data: {
+        user: {
+          ...user,
+          buildingId: effectiveBuildingId,
+        },
+      },
     });
   } catch (error) {
     next(error);

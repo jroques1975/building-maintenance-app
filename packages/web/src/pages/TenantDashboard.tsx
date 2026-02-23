@@ -68,11 +68,8 @@ const TenantDashboard: React.FC = () => {
   const handleSubmitIssue = async () => {
     try {
       setError(null)
-      // Tenants may not have user.buildingId set; building is inferred via unit/building relationship.
-      // For now, use the buildingId from one of the tenant's existing issues (same tenant scope).
-      const my = await issueService.getMyIssues()
-      const buildingId = my.data[0]?.buildingId
-      const unitId = my.data[0]?.unitId
+      const buildingId = user?.buildingId
+      const unitId = (user as any)?.unit?.id
 
       if (!buildingId) {
         throw new Error('We could not determine your building. Ask management to assign your unit/building.')
