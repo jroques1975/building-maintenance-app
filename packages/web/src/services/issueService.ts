@@ -270,7 +270,8 @@ const issueService = {
       throw new Error('Authentication required');
     }
 
-    const response = await fetch(`${API_BASE}${API_ENDPOINTS.issues.myIssues}`, {
+    // Backend route is /api/issues/my-issues (note: differs from shared constant)
+    const response = await fetch(`${API_BASE}/issues/my-issues`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
