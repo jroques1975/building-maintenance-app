@@ -19,13 +19,17 @@ const queryClient = new QueryClient({
   },
 })
 
+import { ErrorBoundary } from './components/common/ErrorBoundary'
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
-          <App />
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
         </ThemeProvider>
       </QueryClientProvider>
     </Provider>
