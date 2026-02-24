@@ -47,7 +47,7 @@ router.get('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_AD
 
     const buildings = await prisma.building.findMany({
       where: {
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
       select: {
         id: true,
@@ -102,7 +102,7 @@ router.get('/:id', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER
     const building = await prisma.building.findFirst({
       where: {
         id: req.params.id,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
       select: {
         id: true,
@@ -213,7 +213,7 @@ router.post('/', authenticateWithTenant, authorize(['ADMIN', 'SUPER_ADMIN']), as
     // Check if building with same address already exists in tenant
     const existingBuilding = await prisma.building.findFirst({
       where: {
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
         address: data.address,
         city: data.city,
         state: data.state,
@@ -228,7 +228,7 @@ router.post('/', authenticateWithTenant, authorize(['ADMIN', 'SUPER_ADMIN']), as
     const building = await prisma.building.create({
       data: {
         ...data,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
       select: {
         id: true,
@@ -274,7 +274,7 @@ router.put('/:id', authenticateWithTenant, authorize(['ADMIN', 'SUPER_ADMIN']), 
     const existingBuilding = await prisma.building.findFirst({
       where: {
         id: req.params.id,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     });
 
@@ -326,7 +326,7 @@ router.delete('/:id', authenticateWithTenant, authorize(['ADMIN', 'SUPER_ADMIN']
     const existingBuilding = await prisma.building.findFirst({
       where: {
         id: req.params.id,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
     });
 
@@ -384,7 +384,7 @@ router.get('/:id/stats', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 
     const building = await prisma.building.findFirst({
       where: {
         id: req.params.id,
-        tenantId: req.tenant.tenantId,
+        currentManagementId: req.tenant.tenantId,
       },
       select: { id: true },
     });
