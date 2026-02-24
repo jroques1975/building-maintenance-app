@@ -8,9 +8,10 @@ export interface User {
   lastName: string;
   role: UserRole;
   buildingId?: string;
+  unitId?: string;
   unitNumber?: string;
   avatarUrl?: string;
-  isActive: boolean;
+  isActive?: boolean;
   lastLoginAt?: Date;
 }
 

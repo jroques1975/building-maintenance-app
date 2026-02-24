@@ -69,7 +69,7 @@ const TenantDashboard: React.FC = () => {
     try {
       setError(null)
       const buildingId = user?.buildingId
-      const unitId = (user as any)?.unit?.id
+      const unitId = user?.unitId
 
       if (!buildingId) {
         throw new Error('We could not determine your building. Ask management to assign your unit/building.')
