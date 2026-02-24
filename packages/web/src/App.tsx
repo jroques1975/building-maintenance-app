@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import IssueDetailPage from './pages/IssueDetailPage'
+import WorkOrdersPage from './pages/WorkOrdersPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
@@ -82,7 +83,15 @@ function App() {
             </Layout>
           </ProtectedRoute>
         } />
-        
+
+        <Route path="/work-orders" element={
+          <ProtectedRoute>
+            <Layout>
+              <WorkOrdersPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
