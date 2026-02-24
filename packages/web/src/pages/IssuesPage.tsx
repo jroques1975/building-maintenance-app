@@ -102,10 +102,10 @@ const IssuesPage: React.FC = () => {
       {/* Search + Tabs */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }} alignItems="center">
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-          {TABS.map((t, i) => (
+          {TABS.map((t) => (
             <Tab key={t.label} label={`${t.label} (${
               t.statuses.length > 0
-                ? issues.filter(i => t.statuses.includes(i.status)).length
+                ? issues.filter(issue => t.statuses.includes(issue.status)).length
                 : issues.length
             })`} />
           ))}

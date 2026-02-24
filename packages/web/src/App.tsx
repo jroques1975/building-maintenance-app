@@ -11,6 +11,9 @@ import WorkOrdersPage from './pages/WorkOrdersPage'
 import WorkOrderDetailPage from './pages/WorkOrderDetailPage'
 import OperatorContinuityPage from './pages/OperatorContinuityPage'
 import IssuesPage from './pages/IssuesPage'
+import UsersPage from './pages/UsersPage'
+import BuildingsPage from './pages/BuildingsPage'
+import BuildingDetailPage from './pages/BuildingDetailPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
@@ -108,6 +111,30 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <IssuesPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/users" element={
+          <ProtectedRoute>
+            <Layout>
+              <UsersPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/buildings" element={
+          <ProtectedRoute>
+            <Layout>
+              <BuildingsPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/buildings/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <BuildingDetailPage />
             </Layout>
           </ProtectedRoute>
         } />

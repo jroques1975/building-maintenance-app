@@ -61,58 +61,6 @@ const initialState: DashboardState = {
   emergencyMode: false,
 }
 
-// Mock data for development
-const mockIssues: Issue[] = [
-  {
-    id: '304',
-    title: 'AC Failed - No Cooling',
-    description: 'Living room AC completely dead, tenant reports 85°F interior temp',
-    priority: 'URGENT',
-    status: 'PENDING',
-    category: 'HVAC',
-    submittedById: 'tenant-304',
-    assignedToId: 'tech-j',
-    buildingId: 'building-a',
-    unitId: 'unit-304',
-    createdAt: new Date('2026-02-19T10:30:00'),
-    updatedAt: new Date('2026-02-19T10:30:00'),
-  },
-  {
-    id: '205',
-    title: 'Leaky Kitchen Faucet',
-    description: 'Kitchen faucet leaking continuously, water pooling under sink',
-    priority: 'HIGH',
-    status: 'IN_PROGRESS',
-    category: 'Plumbing',
-    submittedById: 'tenant-205',
-    assignedToId: 'plumber-m',
-    buildingId: 'building-a',
-    unitId: 'unit-205',
-    createdAt: new Date('2026-02-18T14:20:00'),
-    updatedAt: new Date('2026-02-18T14:20:00'),
-  },
-  {
-    id: '102',
-    title: 'Exterior Paint Peeling',
-    description: 'South wall exterior paint peeling due to sun exposure, needs repainting',
-    priority: 'LOW',
-    status: 'PENDING',
-    category: 'Maintenance',
-    submittedById: 'tenant-102',
-    buildingId: 'building-a',
-    unitId: 'unit-102',
-    createdAt: new Date('2026-02-16T09:15:00'),
-    updatedAt: new Date('2026-02-16T09:15:00'),
-  },
-]
-
-const mockActivities: Activity[] = [
-  { id: '1', action: 'J. assigned #304 to HVAC Tech', time: '10:30 AM' },
-  { id: '2', action: 'M. completed #201 repair - leak fixed', time: '9:45 AM' },
-  { id: '3', action: 'S. updated status on #198 - awaiting parts', time: '9:30 AM' },
-  { id: '4', action: 'Emergency mode activated - Hurricane prep', time: 'Yesterday 5:00 PM' },
-]
-
 export const fetchDashboardData = createAsyncThunk(
   'dashboard/fetchData',
   async (_, { rejectWithValue }) => {
