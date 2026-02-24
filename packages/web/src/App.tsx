@@ -10,6 +10,7 @@ import IssueDetailPage from './pages/IssueDetailPage'
 import WorkOrdersPage from './pages/WorkOrdersPage'
 import WorkOrderDetailPage from './pages/WorkOrderDetailPage'
 import OperatorContinuityPage from './pages/OperatorContinuityPage'
+import IssuesPage from './pages/IssuesPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
@@ -99,6 +100,14 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <OperatorContinuityPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/issues" element={
+          <ProtectedRoute>
+            <Layout>
+              <IssuesPage />
             </Layout>
           </ProtectedRoute>
         } />
