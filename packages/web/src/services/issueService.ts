@@ -83,8 +83,21 @@ const issueService = {
       throw new Error(error.message || 'Failed to fetch issues');
     }
 
-    const data = await response.json();
-    return data.data; // Assuming backend returns { status: 'success', data: PaginatedResponse }
+    const json = await response.json();
+    // Backend shape: { status: 'success', data: { issues: Issue[] }, meta: { total, page, limit, pages } }
+    const issues: Issue[] = json?.data?.issues ?? [];
+    const meta = json?.meta;
+    return {
+      data: issues,
+      meta: {
+        page: meta?.page ?? 1,
+        limit: meta?.limit ?? 20,
+        total: meta?.total ?? issues.length,
+        totalPages: meta?.pages ?? 1,
+        hasNext: meta?.page ? meta.page < (meta.pages ?? 1) : false,
+        hasPrev: meta?.page ? meta.page > 1 : false,
+      },
+    };
   },
 
   async getIssue(id: string): Promise<Issue> {
@@ -207,7 +220,7 @@ const issueService = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ assigneeId }),
+      body: JSON.stringify({ assignedToId: assigneeId }),
     });
 
     if (!response.ok) {

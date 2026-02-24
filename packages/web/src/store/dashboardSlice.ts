@@ -85,19 +85,55 @@ export const fetchDashboardData = createAsyncThunk(
         .reduce((sum, s) => sum + s._count, 0)
       const urgentIssues = byPriority.find(p => p.priority === 'URGENT')?._count ?? 0
 
+      // Compute todayDue: issues scheduled for today that are not completed/cancelled
+      const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999)
+      const todayDue = issues.filter(i => {
+        if (!i.scheduledDate) return false
+        const d = new Date(i.scheduledDate)
+        return d >= todayStart && d <= todayEnd && !['COMPLETED', 'CANCELLED'].includes(i.status)
+      }).length
+
+      // Compute agingIssues: open issues older than 3 days
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+      const agingIssues = issues.filter(i =>
+        openStatuses.includes(i.status) && new Date(i.createdAt) < threeDaysAgo
+      ).length
+
+      // Compute avgCompletionTime from completed issues
+      const completedWithDate = issues.filter(i => i.status === 'COMPLETED' && i.completedDate)
+      let avgCompletionTime = '—'
+      if (completedWithDate.length > 0) {
+        const avgMs = completedWithDate.reduce((sum, i) => {
+          return sum + (new Date(i.completedDate!).getTime() - new Date(i.createdAt).getTime())
+        }, 0) / completedWithDate.length
+        const avgDays = avgMs / (1000 * 60 * 60 * 24)
+        avgCompletionTime = avgDays < 1 ? `${Math.round(avgDays * 24)}h` : `${avgDays.toFixed(1)}d`
+      }
+
+      // Derive activity feed from 8 most recently updated issues
+      const activities: Activity[] = [...issues]
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 8)
+        .map(i => ({
+          id: i.id,
+          action: `"${i.title.substring(0, 45)}${i.title.length > 45 ? '…' : ''}" — ${i.status.replace(/_/g, ' ')}`,
+          time: new Date(i.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }))
+
       return {
         issues,
         stats: {
           openIssues,
           urgentIssues,
-          todayDue: 0,
-          agingIssues: 0,
+          todayDue,
+          agingIssues,
           avgResponseTime: '—',
-          avgCompletionTime: '—',
+          avgCompletionTime,
           tenantSatisfaction: 0,
           costPerUnit: 0,
         },
-        activities: [] as Activity[],
+        activities,
       }
     } catch (error: any) {
       return rejectWithValue(error?.message || 'Failed to fetch dashboard data')
