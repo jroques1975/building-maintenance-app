@@ -46,13 +46,16 @@ const WorkOrdersPage: React.FC = () => {
 
   // Inline status update state
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 })
 
-  const load = async () => {
+  const load = async (p: number = page) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await workOrderService.getWorkOrders()
+      const res = await workOrderService.getWorkOrders({ page: String(p), limit: '20' })
       setWorkOrders(res.data)
+      setMeta({ total: res.meta.total, page: res.meta.page, totalPages: res.meta.totalPages })
     } catch (e: any) {
       setError(e?.message || 'Failed to load work orders')
     } finally {
@@ -60,7 +63,7 @@ const WorkOrdersPage: React.FC = () => {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(page) }, [page])
 
   // Load staff + buildings when create dialog opens
   useEffect(() => {
@@ -86,11 +89,11 @@ const WorkOrdersPage: React.FC = () => {
   }, [workOrders, tab])
 
   const stats = useMemo(() => ({
-    total: workOrders.length,
+    total: meta.total,
     active: workOrders.filter(w => !['COMPLETED', 'CANCELLED'].includes(w.status)).length,
     completed: workOrders.filter(w => w.status === 'COMPLETED').length,
     urgent: workOrders.filter(w => w.priority === 'URGENT').length,
-  }), [workOrders])
+  }), [workOrders, meta.total])
 
   const handleCreate = async () => {
     if (!form.title || !form.description || !form.buildingId) {
@@ -103,7 +106,8 @@ const WorkOrdersPage: React.FC = () => {
       await workOrderService.createWorkOrder(form)
       setCreateOpen(false)
       setForm({ title: '', description: '', buildingId: '', priority: 'MEDIUM' })
-      await load()
+      setPage(1)
+      await load(1)
     } catch (e: any) {
       setFormError(e?.message || 'Failed to create work order')
     } finally {
@@ -236,6 +240,31 @@ const WorkOrdersPage: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      )}
+
+      {/* Pagination */}
+      {meta.totalPages > 1 && (
+        <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" sx={{ mt: 3 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+          <Typography variant="body2" color="text.secondary">
+            Page {page} of {meta.totalPages} ({meta.total} total)
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={page >= meta.totalPages || loading}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </Button>
+        </Stack>
       )}
 
       {/* Create Work Order Dialog */}

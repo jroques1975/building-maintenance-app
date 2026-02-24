@@ -22,6 +22,10 @@ const TABS = [
   { label: 'All', statuses: [] },
 ]
 
+const PAGE_LIMIT = 20
+
+interface Meta { total: number; page: number; totalPages: number }
+
 const IssuesPage: React.FC = () => {
   const navigate = useNavigate()
   const [issues, setIssues] = useState<Issue[]>([])
@@ -29,13 +33,16 @@ const IssuesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [meta, setMeta] = useState<Meta>({ total: 0, page: 1, totalPages: 1 })
 
-  const load = async () => {
+  const load = async (p: number = page) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await issueService.getIssues()
+      const res = await issueService.getIssues({ page: p, limit: PAGE_LIMIT })
       setIssues(res.data)
+      setMeta({ total: res.meta.total, page: res.meta.page, totalPages: res.meta.totalPages })
     } catch (e: any) {
       setError(e?.message || 'Failed to load issues')
     } finally {
@@ -43,7 +50,13 @@ const IssuesPage: React.FC = () => {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(page) }, [page])
+
+  // Reset to page 1 when tab or search changes
+  const handleTabChange = (_: React.SyntheticEvent, v: number) => {
+    setTab(v)
+    setPage(1)
+  }
 
   const filtered = useMemo(() => {
     let list = issues
@@ -66,8 +79,8 @@ const IssuesPage: React.FC = () => {
     open: issues.filter(i => ['PENDING', 'IN_REVIEW', 'SCHEDULED', 'IN_PROGRESS'].includes(i.status)).length,
     urgent: issues.filter(i => i.priority === 'URGENT').length,
     completed: issues.filter(i => i.status === 'COMPLETED').length,
-    total: issues.length,
-  }), [issues])
+    total: meta.total,
+  }), [issues, meta.total])
 
   return (
     <Box>
@@ -77,16 +90,16 @@ const IssuesPage: React.FC = () => {
           <Typography variant="h4">Issues</Typography>
           <Typography variant="body2" color="text.secondary">All maintenance requests across your portfolio</Typography>
         </Box>
-        <Button variant="outlined" onClick={load}>Refresh</Button>
+        <Button variant="outlined" onClick={() => load(page)}>Refresh</Button>
       </Box>
 
       {/* Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[
           { label: 'Total', value: stats.total, color: 'primary.main' },
-          { label: 'Open', value: stats.open, color: 'warning.main' },
-          { label: 'Urgent', value: stats.urgent, color: 'error.main' },
-          { label: 'Completed', value: stats.completed, color: 'success.main' },
+          { label: 'Open (page)', value: stats.open, color: 'warning.main' },
+          { label: 'Urgent (page)', value: stats.urgent, color: 'error.main' },
+          { label: 'Completed (page)', value: stats.completed, color: 'success.main' },
         ].map(s => (
           <Grid item xs={6} sm={3} key={s.label}>
             <Card variant="outlined">
@@ -101,7 +114,7 @@ const IssuesPage: React.FC = () => {
 
       {/* Search + Tabs */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }} alignItems="center">
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
+        <Tabs value={tab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
           {TABS.map((t) => (
             <Tab key={t.label} label={`${t.label} (${
               t.statuses.length > 0
@@ -186,6 +199,31 @@ const IssuesPage: React.FC = () => {
             </Grid>
           ))}
         </Grid>
+      )}
+
+      {/* Pagination */}
+      {meta.totalPages > 1 && (
+        <Stack direction="row" spacing={2} justifyContent="center" alignItems="center" sx={{ mt: 3 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={page <= 1 || loading}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+          <Typography variant="body2" color="text.secondary">
+            Page {page} of {meta.totalPages} ({meta.total} total)
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={page >= meta.totalPages || loading}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </Button>
+        </Stack>
       )}
     </Box>
   )

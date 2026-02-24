@@ -24,6 +24,7 @@ import {
   Work as WorkIcon,
 } from '@mui/icons-material'
 import { useAppSelector } from '../store'
+import { useNavigate } from 'react-router-dom'
 import { tokenService } from '../services/authService'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -60,6 +61,7 @@ const ROLE_COLOR: Record<string, any> = {
 }
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
   const [buildings, setBuildings] = useState<Building[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -266,9 +268,11 @@ const AdminDashboard: React.FC = () => {
       <Paper sx={{ p: 3, mt: 3 }}>
         <Typography variant="h6" gutterBottom>Quick Actions</Typography>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Button variant="outlined" onClick={() => window.location.href = '/work-orders'}>
-            Manage Work Orders
-          </Button>
+          <Button variant="outlined" onClick={() => navigate('/work-orders')}>Work Orders</Button>
+          <Button variant="outlined" onClick={() => navigate('/issues')}>All Issues</Button>
+          <Button variant="outlined" onClick={() => navigate('/buildings')}>Buildings</Button>
+          <Button variant="outlined" onClick={() => navigate('/users')}>Users</Button>
+          <Button variant="outlined" onClick={() => navigate('/operator-continuity')}>Portfolio</Button>
         </Box>
       </Paper>
     </Box>

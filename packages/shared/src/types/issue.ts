@@ -82,4 +82,6 @@ export interface IssueFilter {
   assignedToId?: string;
   startDate?: Date;
   endDate?: Date;
+  page?: number;
+  limit?: number;
 }
