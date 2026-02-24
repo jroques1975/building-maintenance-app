@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogTitle,
@@ -11,100 +11,171 @@ import {
   Divider,
   TextField,
   Stack,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  CircularProgress,
+  Alert,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
-import AssignmentIcon from '@mui/icons-material/Assignment'
-import UpdateIcon from '@mui/icons-material/Update'
-import NoteAddIcon from '@mui/icons-material/NoteAdd'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { Issue } from '@shared/types'
+import issueService from '../../services/issueService'
+import { tokenService } from '../../services/authService'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+const ISSUE_STATUSES = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'IN_REVIEW', label: 'In Review' },
+  { value: 'SCHEDULED', label: 'Scheduled' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+]
+
+interface StaffMember {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  role: string
+}
 
 interface IssueDetailModalProps {
   open: boolean
   issue: Issue | null
   onClose: () => void
-  onAction: (action: string, issueId: string, data?: any) => void
+  onRefresh: () => void
 }
 
 const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
   open,
   issue,
   onClose,
-  onAction,
+  onRefresh,
 }) => {
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [staffLoading, setStaffLoading] = useState(false)
+  const [assigneeId, setAssigneeId] = useState('')
+  const [newStatus, setNewStatus] = useState('')
+  const [noteContent, setNoteContent] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  // Load staff when modal opens
+  useEffect(() => {
+    if (!open) return
+    setError(null)
+    setSuccessMsg(null)
+    setAssigneeId(issue?.assignedToId ?? '')
+    setNewStatus(issue?.status ?? '')
+    setNoteContent('')
+
+    const token = tokenService.getToken()
+    if (!token) return
+
+    setStaffLoading(true)
+    fetch(`${API_BASE}/issues/assignable-staff`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(json => setStaff(json?.data?.staff ?? []))
+      .catch(() => setStaff([]))
+      .finally(() => setStaffLoading(false))
+  }, [open, issue?.assignedToId, issue?.status])
+
   if (!issue) return null
+
+  const clearMessages = () => {
+    setError(null)
+    setSuccessMsg(null)
+  }
+
+  const handleAssign = async () => {
+    if (!assigneeId) return
+    clearMessages()
+    setSubmitting(true)
+    try {
+      await issueService.assignIssue(issue.id, assigneeId)
+      setSuccessMsg('Issue assigned successfully')
+      onRefresh()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to assign issue')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleStatusUpdate = async () => {
+    if (!newStatus) return
+    clearMessages()
+    setSubmitting(true)
+    try {
+      await issueService.updateIssueStatus(issue.id, newStatus)
+      setSuccessMsg('Status updated successfully')
+      onRefresh()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update status')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSaveNote = async () => {
+    if (!noteContent.trim()) return
+    clearMessages()
+    setSubmitting(true)
+    const token = tokenService.getToken()
+    try {
+      const res = await fetch(`${API_BASE}/issues/${issue.id}/comments`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: noteContent.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || 'Failed to save note')
+      }
+      setNoteContent('')
+      setSuccessMsg('Note saved')
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save note')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleMarkComplete = async () => {
+    clearMessages()
+    setSubmitting(true)
+    try {
+      await issueService.updateIssueStatus(issue.id, 'COMPLETED')
+      setSuccessMsg('Issue marked as completed')
+      onRefresh()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to complete issue')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'URGENT':
-      case 'HIGH':
-        return 'error'
-      case 'MEDIUM':
-        return 'warning'
-      case 'LOW':
-        return 'success'
-      default:
-        return 'default'
+      case 'URGENT': case 'HIGH': return 'error'
+      case 'MEDIUM': return 'warning'
+      case 'LOW': return 'success'
+      default: return 'default'
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'PENDING':
-        return 'Pending'
-      case 'IN_REVIEW':
-        return 'In Review'
-      case 'IN_PROGRESS':
-        return 'In Progress'
-      case 'SCHEDULED':
-        return 'Scheduled'
-      case 'COMPLETED':
-        return 'Completed'
-      case 'CANCELLED':
-        return 'Cancelled'
-      default:
-        return status
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'IN_PROGRESS':
-        return '🟡'
-      case 'COMPLETED':
-      case 'CANCELLED':
-        return '✅'
-      default:
-        return '⚪'
-    }
-  }
-
-  const handleAssign = () => {
-    const technician = prompt('Assign to technician (Tech J., Plumber M., etc.):', issue.assignedToId || '')
-    if (technician !== null) {
-      onAction('assign', issue.id, { assignedToId: technician })
-    }
-  }
-
-  const handleUpdateStatus = () => {
-    const newStatus = prompt('New status (open, in_progress, completed, closed):', issue.status)
-    if (newStatus !== null) {
-      onAction('update-status', issue.id, { status: newStatus })
-    }
-  }
-
-  const handleAddNote = () => {
-    const note = prompt('Add note:')
-    if (note !== null) {
-      onAction('add-note', issue.id, { note })
-    }
-  }
-
-  const handleComplete = () => {
-    if (confirm(`Mark issue #${issue.id} as completed?`)) {
-      onAction('complete', issue.id)
-    }
-  }
+  const assignedStaffName = staff.find(s => s.id === issue.assignedToId)
+    ? `${staff.find(s => s.id === issue.assignedToId)!.firstName} ${staff.find(s => s.id === issue.assignedToId)!.lastName}`
+    : issue.assignedToId || 'Unassigned'
 
   return (
     <Dialog
@@ -112,14 +183,12 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
       onClose={onClose}
       maxWidth="md"
       fullWidth
-      PaperProps={{
-        sx: { borderRadius: 3 }
-      }}
+      PaperProps={{ sx: { borderRadius: 3 } }}
     >
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Typography variant="h6">
-            #{issue.id} - {issue.title}
+            #{issue.id.slice(0, 8)} - {issue.title}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Created: {new Date(issue.createdAt).toLocaleString()}
@@ -132,122 +201,112 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
 
       <DialogContent dividers>
         <Stack spacing={3}>
-          {/* Issue Summary */}
+          {error && <Alert severity="error" onClose={clearMessages}>{error}</Alert>}
+          {successMsg && <Alert severity="success" onClose={clearMessages}>{successMsg}</Alert>}
+
+          {/* Description */}
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              SUMMARY
-            </Typography>
-            <Typography variant="body1" paragraph>
-              {issue.description}
-            </Typography>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>SUMMARY</Typography>
+            <Typography variant="body1">{issue.description}</Typography>
           </Box>
 
           <Divider />
 
-          {/* Metadata Grid */}
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+          {/* Metadata */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Unit
-              </Typography>
-              <Typography variant="body1">
-                {issue.unitId || 'N/A'}
-              </Typography>
+              <Typography variant="caption" color="text.secondary">Unit</Typography>
+              <Typography variant="body1">{issue.unitId || 'N/A'}</Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Category
-              </Typography>
-              <Typography variant="body1">
-                {issue.category || 'N/A'}
-              </Typography>
+              <Typography variant="caption" color="text.secondary">Category</Typography>
+              <Typography variant="body1">{issue.category}</Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Priority
-              </Typography>
-              <Chip
-                label={issue.priority}
-                size="small"
-                color={getPriorityColor(issue.priority)}
-                sx={{ textTransform: 'capitalize' }}
-              />
+              <Typography variant="caption" color="text.secondary">Priority</Typography>
+              <br />
+              <Chip label={issue.priority} size="small" color={getPriorityColor(issue.priority) as any} />
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Status
-              </Typography>
-              <Typography variant="body1">
-                {getStatusIcon(issue.status)} {getStatusText(issue.status)}
-              </Typography>
+              <Typography variant="caption" color="text.secondary">Current Status</Typography>
+              <Typography variant="body1">{issue.status}</Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Assigned To
-              </Typography>
-              <Typography variant="body1">
-                {issue.assignedToId || 'Unassigned'}
-              </Typography>
+              <Typography variant="caption" color="text.secondary">Assigned To</Typography>
+              <Typography variant="body1">{assignedStaffName}</Typography>
             </Box>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Last Updated
-              </Typography>
-              <Typography variant="body1">
-                {new Date(issue.updatedAt).toLocaleString()}
-              </Typography>
+              <Typography variant="caption" color="text.secondary">Last Updated</Typography>
+              <Typography variant="body1">{new Date(issue.updatedAt).toLocaleString()}</Typography>
             </Box>
           </Box>
 
           <Divider />
 
-          {/* Quick Actions */}
+          {/* Assign */}
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              QUICK ACTIONS
-            </Typography>
-            <Stack direction="row" spacing={2} flexWrap="wrap">
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>ASSIGN</Typography>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel>Staff member</InputLabel>
+                <Select
+                  value={assigneeId}
+                  label="Staff member"
+                  onChange={e => setAssigneeId(e.target.value)}
+                  disabled={staffLoading || submitting}
+                >
+                  <MenuItem value=""><em>Unassigned</em></MenuItem>
+                  {staff.map(s => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.firstName} {s.lastName} ({s.role})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <Button
                 variant="outlined"
-                startIcon={<AssignmentIcon />}
+                size="small"
                 onClick={handleAssign}
-                size="small"
+                disabled={!assigneeId || submitting}
               >
-                Assign
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<UpdateIcon />}
-                onClick={handleUpdateStatus}
-                size="small"
-              >
-                Update Status
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<NoteAddIcon />}
-                onClick={handleAddNote}
-                size="small"
-              >
-                Add Note
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<CheckCircleIcon />}
-                onClick={handleComplete}
-                size="small"
-                color="success"
-              >
-                Mark Complete
+                {submitting ? <CircularProgress size={16} /> : 'Assign'}
               </Button>
             </Stack>
           </Box>
 
-          {/* Notes Section (would be populated from API) */}
+          {/* Status */}
           <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              NOTES & COMMENTS
-            </Typography>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>UPDATE STATUS</Typography>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={newStatus}
+                  label="Status"
+                  onChange={e => setNewStatus(e.target.value)}
+                  disabled={submitting}
+                >
+                  {ISSUE_STATUSES.map(s => (
+                    <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleStatusUpdate}
+                disabled={!newStatus || newStatus === issue.status || submitting}
+              >
+                {submitting ? <CircularProgress size={16} /> : 'Update'}
+              </Button>
+            </Stack>
+          </Box>
+
+          <Divider />
+
+          {/* Notes */}
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>ADD NOTE</Typography>
             <TextField
               multiline
               rows={3}
@@ -255,24 +314,32 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
               fullWidth
               variant="outlined"
               size="small"
+              value={noteContent}
+              onChange={e => setNoteContent(e.target.value)}
+              disabled={submitting}
             />
-            <Button size="small" sx={{ mt: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{ mt: 1 }}
+              onClick={handleSaveNote}
+              disabled={!noteContent.trim() || submitting}
+            >
               Save Note
             </Button>
           </Box>
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onClose} color="inherit">
-          Close
-        </Button>
+      <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+        <Button onClick={onClose} color="inherit">Close</Button>
         <Button
           variant="contained"
-          onClick={() => onAction('save', issue.id)}
-          color="primary"
+          color="success"
+          onClick={handleMarkComplete}
+          disabled={issue.status === 'COMPLETED' || submitting}
         >
-          Save Changes
+          Mark Complete
         </Button>
       </DialogActions>
     </Dialog>

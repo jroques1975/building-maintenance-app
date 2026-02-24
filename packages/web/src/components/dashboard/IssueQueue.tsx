@@ -17,9 +17,10 @@ import { Issue } from '@shared/types'
 interface IssueQueueProps {
   onFilterChange: (filter: string) => void
   currentFilter: string
+  onRefresh: () => void
 }
 
-const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter }) => {
+const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter, onRefresh }) => {
   const { filteredIssues } = useAppSelector((state) => state.dashboard)
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -57,20 +58,12 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter }
 
   const handleModalClose = () => {
     setModalOpen(false)
-    setTimeout(() => setSelectedIssue(null), 300) // Clear after animation
+    setTimeout(() => setSelectedIssue(null), 300)
   }
 
-  const handleAction = (action: string, issueId: string, data?: any) => {
-    // In a real app, this would dispatch a Redux action or API call
-    alert(`Action "${action}" on issue #${issueId}\nData: ${JSON.stringify(data, null, 2)}`)
-    
-    // Simulate success and close modal for certain actions
-    if (action === 'complete' || action === 'save') {
-      setTimeout(() => {
-        alert(`Issue #${issueId} ${action === 'complete' ? 'marked as completed' : 'updated successfully'}`)
-        handleModalClose()
-      }, 500)
-    }
+  const handleRefreshAndClose = () => {
+    handleModalClose()
+    onRefresh()
   }
 
   return (
@@ -155,7 +148,7 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter }
         open={modalOpen}
         issue={selectedIssue}
         onClose={handleModalClose}
-        onAction={handleAction}
+        onRefresh={handleRefreshAndClose}
       />
     </>
   )

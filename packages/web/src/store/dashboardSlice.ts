@@ -1,5 +1,16 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { Issue, IssueFilter } from '@shared/types'
+import { tokenService } from '../services/authService'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+async function apiFetch(path: string, token: string) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  })
+  if (!res.ok) throw new Error(`API error ${res.status}`)
+  return res.json()
+}
 
 interface DashboardStats {
   openIssues: number
@@ -102,21 +113,46 @@ const mockActivities: Activity[] = [
   { id: '4', action: 'Emergency mode activated - Hurricane prep', time: 'Yesterday 5:00 PM' },
 ]
 
-// Async thunks would go here for real API calls
 export const fetchDashboardData = createAsyncThunk(
   'dashboard/fetchData',
   async (_, { rejectWithValue }) => {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
+      const token = tokenService.getToken()
+      if (!token) return rejectWithValue('Not authenticated')
+
+      const [issuesJson, statsJson] = await Promise.all([
+        apiFetch('/issues', token),
+        apiFetch('/issues/stats/summary', token),
+      ])
+
+      const issues: Issue[] = issuesJson?.data?.issues ?? []
+      const statsData = statsJson?.data ?? {}
+
+      const byStatus: { status: string; _count: number }[] = statsData.byStatus ?? []
+      const byPriority: { priority: string; _count: number }[] = statsData.byPriority ?? []
+
+      const openStatuses = ['PENDING', 'IN_REVIEW', 'SCHEDULED', 'IN_PROGRESS']
+      const openIssues = byStatus
+        .filter(s => openStatuses.includes(s.status))
+        .reduce((sum, s) => sum + s._count, 0)
+      const urgentIssues = byPriority.find(p => p.priority === 'URGENT')?._count ?? 0
+
       return {
-        issues: mockIssues,
-        stats: initialState.stats,
-        activities: mockActivities,
+        issues,
+        stats: {
+          openIssues,
+          urgentIssues,
+          todayDue: 0,
+          agingIssues: 0,
+          avgResponseTime: '—',
+          avgCompletionTime: '—',
+          tenantSatisfaction: 0,
+          costPerUnit: 0,
+        },
+        activities: [] as Activity[],
       }
-    } catch (error) {
-      return rejectWithValue('Failed to fetch dashboard data')
+    } catch (error: any) {
+      return rejectWithValue(error?.message || 'Failed to fetch dashboard data')
     }
   }
 )

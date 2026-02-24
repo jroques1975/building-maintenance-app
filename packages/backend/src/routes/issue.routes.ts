@@ -490,6 +490,41 @@ router.get('/my-issues', authenticateWithTenant, authorize(['TENANT', 'MAINTENAN
 });
 
 /**
+ * @route GET /api/issues/assignable-staff
+ * @desc Get staff members eligible to be assigned issues (MAINTENANCE + MANAGER roles)
+ * @access MANAGER+
+ */
+router.get('/assignable-staff', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_ADMIN']), async (req, res, next) => {
+  try {
+    if (!req.tenant) {
+      throw new AppError(401, 'Authentication required');
+    }
+
+    const staff = await prisma.user.findMany({
+      where: {
+        managementCompanyId: req.tenant.tenantId,
+        role: { in: [UserRole.MAINTENANCE, UserRole.MANAGER] },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    res.json({
+      status: 'success',
+      data: { staff },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route GET /api/issues/:id
  * @desc Get single issue by ID
  * @access Role-based (tenants can only see their own)
@@ -766,6 +801,124 @@ router.put('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
       status: 'success',
       data: { issue },
       message: 'Issue updated successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route POST /api/issues/:id/assign
+ * @desc Assign an issue to a staff member
+ * @access MANAGER+
+ */
+router.post('/:id/assign', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_ADMIN']), async (req, res, next) => {
+  try {
+    if (!req.tenant || !req.user) {
+      throw new AppError(401, 'Authentication required');
+    }
+
+    const { assignedToId } = z.object({
+      assignedToId: z.string().min(1, 'Assignee ID is required'),
+    }).parse(req.body);
+
+    const existingIssue = await prisma.issue.findFirst({
+      where: {
+        id: req.params.id,
+        building: { currentManagementId: req.tenant.tenantId },
+      },
+      select: { id: true },
+    });
+
+    if (!existingIssue) {
+      throw new AppError(404, 'Issue not found or not accessible');
+    }
+
+    const assignee = await prisma.user.findFirst({
+      where: {
+        id: assignedToId,
+        managementCompanyId: req.tenant.tenantId,
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, role: true },
+    });
+
+    if (!assignee) {
+      throw new AppError(404, 'Assignee not found in this organization');
+    }
+
+    const issue = await prisma.issue.update({
+      where: { id: req.params.id },
+      data: { assignedToId },
+      select: {
+        id: true,
+        status: true,
+        assignedToId: true,
+        updatedAt: true,
+        assignedTo: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+      },
+    });
+
+    res.json({
+      status: 'success',
+      data: { issue },
+      message: 'Issue assigned successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route POST /api/issues/:id/status
+ * @desc Update the status of an issue
+ * @access MAINTENANCE+ (maintenance can only update assigned issues)
+ */
+router.post('/:id/status', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 'ADMIN', 'SUPER_ADMIN']), async (req, res, next) => {
+  try {
+    if (!req.tenant || !req.user) {
+      throw new AppError(401, 'Authentication required');
+    }
+
+    const { status } = z.object({
+      status: z.nativeEnum(IssueStatus),
+    }).parse(req.body);
+
+    const existingIssue = await prisma.issue.findFirst({
+      where: {
+        id: req.params.id,
+        building: { currentManagementId: req.tenant.tenantId },
+      },
+      select: { id: true, assignedToId: true },
+    });
+
+    if (!existingIssue) {
+      throw new AppError(404, 'Issue not found or not accessible');
+    }
+
+    if (req.user.role === 'MAINTENANCE' && existingIssue.assignedToId !== req.user.userId) {
+      throw new AppError(403, 'Not authorized to update this issue');
+    }
+
+    const issue = await prisma.issue.update({
+      where: { id: req.params.id },
+      data: {
+        status,
+        ...(status === 'COMPLETED' ? { completedDate: new Date() } : {}),
+      },
+      select: {
+        id: true,
+        status: true,
+        completedDate: true,
+        updatedAt: true,
+      },
+    });
+
+    res.json({
+      status: 'success',
+      data: { issue },
+      message: 'Issue status updated successfully',
     });
   } catch (error) {
     next(error);

@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Grid, Box, Alert } from '@mui/material'
 import { useAppSelector, useAppDispatch } from '../store'
-import { toggleEmergencyMode, setFilter } from '../store/dashboardSlice'
+import { toggleEmergencyMode, setFilter, fetchDashboardData } from '../store/dashboardSlice'
 
 import StatsCard from '../components/dashboard/StatsCard'
 import IssueQueue from '../components/dashboard/IssueQueue'
@@ -15,6 +15,14 @@ const DashboardPage: React.FC = () => {
   const dispatch = useAppDispatch()
   const { stats, emergencyMode, filter } = useAppSelector((state) => state.dashboard)
   const { user } = useAppSelector((state) => state.auth)
+
+  useEffect(() => {
+    dispatch(fetchDashboardData())
+  }, [dispatch])
+
+  const handleRefresh = () => {
+    dispatch(fetchDashboardData())
+  }
 
   const handleFilterChange = (newFilter: string) => {
     // Convert string filter to IssueFilter object
@@ -94,9 +102,10 @@ const DashboardPage: React.FC = () => {
       <Grid container spacing={3}>
         {/* Left Column - Issue Queue */}
         <Grid item xs={12} md={8}>
-          <IssueQueue 
+          <IssueQueue
             onFilterChange={handleFilterChange}
             currentFilter={getCurrentFilterString()}
+            onRefresh={handleRefresh}
           />
         </Grid>
 
