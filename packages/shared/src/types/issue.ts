@@ -25,6 +25,25 @@ export interface Issue {
   building?: { id: string; name: string; address: string };
   unit?: { id: string; unitNumber: string };
   _count?: { attachments: number; comments: number; workOrders: number };
+
+  // Detail-level relations (only in GET /issues/:id)
+  comments?: Array<{
+    id: string;
+    content: string;
+    createdAt: Date | string;
+    author: { id: string; firstName: string; lastName: string; role: string };
+  }>;
+  workOrders?: Array<{
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    scheduledDate?: Date | string;
+    completedDate?: Date | string;
+    estimatedHours?: number;
+    actualHours?: number;
+    assignedTo?: { id: string; firstName: string; lastName: string };
+  }>;
 }
 
 export interface CreateIssueDto {

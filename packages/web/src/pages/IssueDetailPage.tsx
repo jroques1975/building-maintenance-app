@@ -15,8 +15,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Avatar,
+  Card,
+  CardContent,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import { Build as WOIcon, Comment as CommentIcon } from '@mui/icons-material'
 import { Issue } from '@shared/types'
 import issueService from '../services/issueService'
 import { useAppSelector } from '../store'
@@ -233,6 +237,90 @@ const IssueDetailPage = () => {
         <Typography variant="subtitle2" color="text.secondary" gutterBottom>Description</Typography>
         <Typography variant="body1">{issue.description}</Typography>
       </Paper>
+
+      {/* Linked Work Orders */}
+      {issue.workOrders && issue.workOrders.length > 0 && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <WOIcon fontSize="small" />
+            Linked Work Orders ({issue.workOrders.length})
+          </Typography>
+          <Stack spacing={1.5}>
+            {issue.workOrders.map(wo => (
+              <Card
+                key={wo.id}
+                variant="outlined"
+                sx={{ cursor: 'pointer', '&:hover': { borderColor: 'primary.main' } }}
+                onClick={() => navigate(`/work-orders/${wo.id}`)}
+              >
+                <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography variant="subtitle2">{wo.title}</Typography>
+                      {wo.assignedTo && (
+                        <Typography variant="caption" color="text.secondary">
+                          {wo.assignedTo.firstName} {wo.assignedTo.lastName}
+                          {wo.scheduledDate ? ` · ${new Date(wo.scheduledDate).toLocaleDateString()}` : ''}
+                        </Typography>
+                      )}
+                    </Box>
+                    <Stack direction="row" spacing={0.5}>
+                      <Chip
+                        label={wo.priority}
+                        size="small"
+                        color={PRIORITY_COLOR[wo.priority] ?? 'default'}
+                        variant="outlined"
+                      />
+                      <Chip
+                        label={wo.status.replace(/_/g, ' ')}
+                        size="small"
+                        color={STATUS_COLOR[wo.status] ?? 'default'}
+                      />
+                    </Stack>
+                  </Box>
+                  {wo.estimatedHours != null && (
+                    <Typography variant="caption" color="text.secondary">
+                      Est: {wo.estimatedHours}h
+                      {wo.actualHours != null ? ` · Actual: ${wo.actualHours}h` : ''}
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
+        </Paper>
+      )}
+
+      {/* Comments */}
+      {issue.comments && issue.comments.length > 0 && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CommentIcon fontSize="small" />
+            Comments ({issue.comments.length})
+          </Typography>
+          <Stack spacing={2}>
+            {issue.comments.map(c => (
+              <Box key={c.id} sx={{ display: 'flex', gap: 1.5 }}>
+                <Avatar sx={{ width: 32, height: 32, fontSize: 13, bgcolor: 'primary.light' }}>
+                  {c.author.firstName[0]}{c.author.lastName[0]}
+                </Avatar>
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                    <Typography variant="subtitle2">
+                      {c.author.firstName} {c.author.lastName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(c.createdAt).toLocaleString()}
+                    </Typography>
+                    <Chip label={c.author.role} size="small" variant="outlined" sx={{ ml: 'auto', fontSize: 10 }} />
+                  </Box>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{c.content}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </Stack>
+        </Paper>
+      )}
 
       {/* Manager actions */}
       {isManager && (
