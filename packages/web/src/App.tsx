@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from './store'
-import { fetchDashboardData } from './store/dashboardSlice'
 import { verifyAuth, getCurrentUser } from './store/authSlice'
 
 import DashboardPage from './pages/DashboardPage'
@@ -17,6 +16,7 @@ function App() {
   const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth)
 
   // Check authentication on app load
+  // Note: fetchDashboardData is dispatched by each role-specific dashboard page
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -33,13 +33,6 @@ function App() {
 
     initAuth()
   }, [dispatch])
-
-  // Fetch dashboard data only when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(fetchDashboardData())
-    }
-  }, [dispatch, isAuthenticated])
 
   if (isLoading) {
     return (

@@ -11,6 +11,8 @@ import { issueRoutes } from './routes/issue.routes';
 import { workOrderRoutes } from './routes/workOrder.routes';
 import { healthRoutes } from './routes/health.routes';
 import { operatorRoutes } from './routes/operator.routes';
+import { buildingRoutes } from './routes/building.routes';
+import { userRoutes } from './routes/user.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +29,8 @@ app.use('/api/auth', authRoutes);       // Authentication (login, etc.)
 app.use('/api', operatorRoutes);        // Operator portfolio + timeline + transitions
 app.use('/api/issues', issueRoutes);    // Issue management (within tenant)
 app.use('/api/work-orders', workOrderRoutes); // Work order management (within tenant)
+app.use('/api/buildings', buildingRoutes);   // Building management
+app.use('/api/users', userRoutes);           // User management
 
 // Error handling
 app.use(notFoundHandler);

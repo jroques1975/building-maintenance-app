@@ -132,11 +132,6 @@ const DashboardPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Development Note */}
-      <Alert severity="info" sx={{ mt: 4 }}>
-        <strong>React Dashboard Prototype</strong> - This is a React conversion of the enhanced HTML prototype.
-        Features: Redux state management, Material-UI components, TypeScript types, and mock API layer.
-      </Alert>
     </Box>
   )
 }

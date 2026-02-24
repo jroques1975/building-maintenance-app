@@ -115,14 +115,19 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter, 
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box>
                       <Typography variant="subtitle1" fontWeight={600}>
-                        {getStatusIcon(issue.status)} #{issue.id} {issue.title}
+                        {getStatusIcon(issue.status)} {issue.title}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {issue.unitId} • {new Date(issue.createdAt).toLocaleDateString()} • {issue.category}
+                        {issue.unit?.unitNumber
+                          ? `Unit ${issue.unit.unitNumber}`
+                          : issue.building?.name || issue.buildingId
+                        } • {new Date(issue.createdAt).toLocaleDateString()} • {issue.category}
                       </Typography>
-                      {issue.assignedToId && (
+                      {(issue.assignedTo || issue.assignedToId) && (
                         <Typography variant="caption" color="text.secondary">
-                          Assigned to: {issue.assignedToId}
+                          Assigned: {issue.assignedTo
+                            ? `${issue.assignedTo.firstName} ${issue.assignedTo.lastName}`
+                            : issue.assignedToId}
                         </Typography>
                       )}
                     </Box>

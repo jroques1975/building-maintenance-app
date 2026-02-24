@@ -14,10 +14,16 @@ export interface Issue {
   location?: string;
   estimatedCost?: number;
   actualCost?: number;
-  scheduledDate?: Date;
-  completedDate?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  scheduledDate?: Date | string;
+  completedDate?: Date | string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+
+  // Relations (present when returned from API)
+  submittedBy?: { id: string; firstName: string; lastName: string; email: string };
+  assignedTo?: { id: string; firstName: string; lastName: string; email: string; role: string };
+  building?: { id: string; name: string; address: string };
+  unit?: { id: string; unitNumber: string };
 }
 
 export interface CreateIssueDto {

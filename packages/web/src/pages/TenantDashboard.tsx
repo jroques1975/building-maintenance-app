@@ -125,7 +125,7 @@ const TenantDashboard: React.FC = () => {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" color="primary">
+            <Typography variant="h3" sx={{ color: 'primary.main' }}>
               {stats.total}
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -135,8 +135,8 @@ const TenantDashboard: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" color="warning">
-              1
+            <Typography variant="h3" sx={{ color: 'warning.main' }}>
+              {stats.inProgress}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               In Progress
@@ -145,8 +145,8 @@ const TenantDashboard: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" color="info">
-              1
+            <Typography variant="h3" sx={{ color: 'info.main' }}>
+              {stats.scheduled}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Scheduled
@@ -155,8 +155,8 @@ const TenantDashboard: React.FC = () => {
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" color="success">
-              1
+            <Typography variant="h3" sx={{ color: 'success.main' }}>
+              {stats.completed}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Completed
@@ -300,11 +300,6 @@ const TenantDashboard: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Information Alert */}
-      <Alert severity="info" sx={{ mt: 4 }}>
-        <strong>Tenant Dashboard</strong> - This is a simplified view for building tenants.
-        You can submit new maintenance requests and track the status of existing ones.
-      </Alert>
     </Box>
   )
 }
