@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import IssueDetailPage from './pages/IssueDetailPage'
 import WorkOrdersPage from './pages/WorkOrdersPage'
+import WorkOrderDetailPage from './pages/WorkOrderDetailPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
@@ -81,6 +82,14 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <WorkOrdersPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/work-orders/:id" element={
+          <ProtectedRoute>
+            <Layout>
+              <WorkOrderDetailPage />
             </Layout>
           </ProtectedRoute>
         } />

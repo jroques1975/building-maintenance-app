@@ -4,11 +4,13 @@ import {
   Alert, Tabs, Tab, CircularProgress,
 } from '@mui/material'
 import { Assignment as WorkIcon, CheckCircle, Schedule, Build } from '@mui/icons-material'
+import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../store'
 import workOrderService from '../services/workOrderService'
 import { WorkOrder, UpdateWorkOrderDto } from '@shared/types'
 
 const MaintenanceDashboard: React.FC = () => {
+  const navigate = useNavigate()
   const { user } = useAppSelector((state) => state.auth)
   const [tabValue, setTabValue] = useState(0)
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
@@ -193,6 +195,12 @@ const MaintenanceDashboard: React.FC = () => {
                       </Button>
                     )}
                     {updatingId === order.id && <CircularProgress size={20} sx={{ alignSelf: 'center' }} />}
+                    <Button
+                      size="small" variant="text"
+                      onClick={() => navigate(`/work-orders/${order.id}`)}
+                    >
+                      View Details
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>

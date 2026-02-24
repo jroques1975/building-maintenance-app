@@ -6,6 +6,7 @@ import {
   Stack,
 } from '@mui/material'
 import { Add as AddIcon, Build as BuildIcon } from '@mui/icons-material'
+import { useNavigate } from 'react-router-dom'
 import workOrderService from '../services/workOrderService'
 import issueService from '../services/issueService'
 import { WorkOrder, CreateWorkOrderDto, UpdateWorkOrderDto, WorkOrderStatus } from '@shared/types'
@@ -28,6 +29,7 @@ interface StaffMember { id: string; firstName: string; lastName: string; role: s
 interface Building { id: string; name: string; address: string }
 
 const WorkOrdersPage: React.FC = () => {
+  const navigate = useNavigate()
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -183,7 +185,12 @@ const WorkOrdersPage: React.FC = () => {
                 <CardContent>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Box sx={{ flex: 1, mr: 1 }}>
-                      <Typography variant="subtitle1" fontWeight={600} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={600}
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer', '&:hover': { color: 'primary.main' } }}
+                        onClick={() => navigate(`/work-orders/${wo.id}`)}
+                      >
                         <BuildIcon fontSize="small" color="action" />
                         {wo.title}
                       </Typography>
