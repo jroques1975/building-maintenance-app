@@ -11,7 +11,7 @@ import {
   MenuItem,
   Chip
 } from '@mui/material'
-import { Logout as LogoutIcon, AccountCircle, Build as BuildIcon } from '@mui/icons-material'
+import { Logout as LogoutIcon, AccountCircle, Build as BuildIcon, History as HistoryIcon } from '@mui/icons-material'
 import Button from '@mui/material/Button'
 import { useAppSelector, useAppDispatch } from '../store'
 import { logout } from '../store/authSlice'
@@ -111,6 +111,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               sx={{ mr: 1 }}
             >
               Work Orders
+            </Button>
+          )}
+
+          {user && ['MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(user.role) && (
+            <Button
+              color="inherit"
+              startIcon={<HistoryIcon />}
+              onClick={() => navigate('/operator-continuity')}
+              sx={{ mr: 1 }}
+            >
+              Portfolio
             </Button>
           )}
 

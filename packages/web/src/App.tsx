@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import IssueDetailPage from './pages/IssueDetailPage'
 import WorkOrdersPage from './pages/WorkOrdersPage'
 import WorkOrderDetailPage from './pages/WorkOrderDetailPage'
+import OperatorContinuityPage from './pages/OperatorContinuityPage'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/common/ProtectedRoute'
 
@@ -90,6 +91,14 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <WorkOrderDetailPage />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
+        <Route path="/operator-continuity" element={
+          <ProtectedRoute>
+            <Layout>
+              <OperatorContinuityPage />
             </Layout>
           </ProtectedRoute>
         } />
