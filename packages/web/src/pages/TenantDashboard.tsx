@@ -31,6 +31,7 @@ const TenantDashboard: React.FC = () => {
     description: '',
     category: 'OTHER',
     priority: 'MEDIUM' as Priority,
+    location: '',
   })
 
   const [isLoading, setIsLoading] = useState(true)
@@ -82,10 +83,11 @@ const TenantDashboard: React.FC = () => {
         priority: newIssue.priority,
         buildingId,
         unitId: unitId || undefined,
+        location: newIssue.location || undefined,
       })
 
       handleCloseNewIssue()
-      setNewIssue({ title: '', description: '', category: 'OTHER', priority: 'MEDIUM' as Priority })
+      setNewIssue({ title: '', description: '', category: 'OTHER', priority: 'MEDIUM' as Priority, location: '' })
       await refresh()
     } catch (e: any) {
       setError(e?.message || 'Failed to submit request')
@@ -257,6 +259,14 @@ const TenantDashboard: React.FC = () => {
             variant="outlined"
             value={newIssue.description}
             onChange={(e) => setNewIssue({...newIssue, description: e.target.value})}
+          />
+          <TextField
+            margin="dense"
+            label="Location (e.g. Kitchen, Living Room, Bathroom)"
+            fullWidth
+            variant="outlined"
+            value={newIssue.location}
+            onChange={(e) => setNewIssue({...newIssue, location: e.target.value})}
           />
           <TextField
             margin="dense"
