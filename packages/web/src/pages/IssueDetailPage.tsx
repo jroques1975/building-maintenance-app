@@ -18,11 +18,16 @@ import {
   Avatar,
   Card,
   CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Build as WOIcon, Comment as CommentIcon } from '@mui/icons-material'
+import { Build as WOIcon, Comment as CommentIcon, AddCircleOutline as CreateWOIcon } from '@mui/icons-material'
 import { Issue } from '@shared/types'
 import issueService from '../services/issueService'
+import workOrderService from '../services/workOrderService'
 import { useAppSelector } from '../store'
 import { tokenService } from '../services/authService'
 
@@ -64,6 +69,12 @@ const IssueDetailPage = () => {
   const [note, setNote] = useState('')
   const [actionSubmitting, setActionSubmitting] = useState(false)
   const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Create work order dialog state
+  const [woOpen, setWoOpen] = useState(false)
+  const [woForm, setWoForm] = useState({ title: '', description: '', priority: 'MEDIUM', assignedToId: '', scheduledDate: '', estimatedHours: '', notes: '' })
+  const [woSubmitting, setWoSubmitting] = useState(false)
+  const [woError, setWoError] = useState<string | null>(null)
 
   const isManager = user && ['MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)
 
@@ -173,6 +184,50 @@ const IssueDetailPage = () => {
       setActionMsg({ type: 'error', text: e?.message || 'Failed to save note' })
     } finally {
       setActionSubmitting(false)
+    }
+  }
+
+  const openWoDialog = () => {
+    setWoForm({
+      title: issue.title,
+      description: issue.description,
+      priority: issue.priority,
+      assignedToId: issue.assignedToId ?? '',
+      scheduledDate: '',
+      estimatedHours: '',
+      notes: '',
+    })
+    setWoError(null)
+    setWoOpen(true)
+  }
+
+  const handleCreateWO = async () => {
+    if (!woForm.title.trim() || !woForm.description.trim()) {
+      setWoError('Title and description are required')
+      return
+    }
+    setWoSubmitting(true)
+    setWoError(null)
+    try {
+      const wo = await workOrderService.createWorkOrder({
+        title: woForm.title.trim(),
+        description: woForm.description.trim(),
+        buildingId: issue.buildingId,
+        unitId: issue.unitId,
+        issueId: issue.id,
+        priority: woForm.priority as any,
+        assignedToId: woForm.assignedToId || undefined,
+        scheduledDate: woForm.scheduledDate || undefined,
+        estimatedHours: woForm.estimatedHours ? parseFloat(woForm.estimatedHours) : undefined,
+        notes: woForm.notes || undefined,
+      })
+      setWoOpen(false)
+      await loadIssue()
+      navigate(`/work-orders/${wo.id}`)
+    } catch (e: any) {
+      setWoError(e?.message || 'Failed to create work order')
+    } finally {
+      setWoSubmitting(false)
     }
   }
 
@@ -322,10 +377,115 @@ const IssueDetailPage = () => {
         </Paper>
       )}
 
+      {/* Create Work Order dialog */}
+      <Dialog open={woOpen} onClose={() => setWoOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Create Work Order</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {woError && <Alert severity="error">{woError}</Alert>}
+
+            <TextField
+              label="Title"
+              required
+              fullWidth
+              size="small"
+              value={woForm.title}
+              onChange={e => setWoForm(f => ({ ...f, title: e.target.value }))}
+            />
+
+            <TextField
+              label="Description"
+              required
+              fullWidth
+              multiline
+              rows={3}
+              size="small"
+              value={woForm.description}
+              onChange={e => setWoForm(f => ({ ...f, description: e.target.value }))}
+            />
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Priority</InputLabel>
+              <Select
+                value={woForm.priority}
+                label="Priority"
+                onChange={e => setWoForm(f => ({ ...f, priority: e.target.value }))}
+              >
+                {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
+                  <MenuItem key={p} value={p}>{p}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small">
+              <InputLabel>Assign to</InputLabel>
+              <Select
+                value={woForm.assignedToId}
+                label="Assign to"
+                onChange={e => setWoForm(f => ({ ...f, assignedToId: e.target.value }))}
+              >
+                <MenuItem value=""><em>Unassigned</em></MenuItem>
+                {staff.map(s => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.firstName} {s.lastName} ({s.role})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Scheduled date"
+              type="date"
+              fullWidth
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              value={woForm.scheduledDate}
+              onChange={e => setWoForm(f => ({ ...f, scheduledDate: e.target.value }))}
+            />
+
+            <TextField
+              label="Estimated hours"
+              type="number"
+              fullWidth
+              size="small"
+              inputProps={{ min: 0, step: 0.5 }}
+              value={woForm.estimatedHours}
+              onChange={e => setWoForm(f => ({ ...f, estimatedHours: e.target.value }))}
+            />
+
+            <TextField
+              label="Notes"
+              fullWidth
+              multiline
+              rows={2}
+              size="small"
+              value={woForm.notes}
+              onChange={e => setWoForm(f => ({ ...f, notes: e.target.value }))}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setWoOpen(false)} color="inherit">Cancel</Button>
+          <Button variant="contained" onClick={handleCreateWO} disabled={woSubmitting}>
+            {woSubmitting ? <CircularProgress size={20} /> : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Manager actions */}
       {isManager && (
         <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Manage Issue</Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Manage Issue</Typography>
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<CreateWOIcon />}
+              onClick={openWoDialog}
+            >
+              Create Work Order
+            </Button>
+          </Box>
 
           {actionMsg && (
             <Alert
