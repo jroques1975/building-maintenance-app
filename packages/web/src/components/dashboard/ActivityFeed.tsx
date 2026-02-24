@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
   Card,
   CardContent,
@@ -10,60 +10,28 @@ import {
 } from '@mui/material'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import { useAppSelector, useAppDispatch } from '../../store'
-import { addActivity } from '../../store/dashboardSlice'
+import { fetchDashboardData } from '../../store/dashboardSlice'
 
 const ActivityFeed: React.FC = () => {
   const dispatch = useAppDispatch()
   const { activities } = useAppSelector((state) => state.dashboard)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true)
-    // Simulate API call delay
-    setTimeout(() => {
-      dispatch(
-        addActivity({
-          id: `activity-${Date.now()}`,
-          action: 'Manual refresh - Activity feed updated',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        })
-      )
+    try {
+      await dispatch(fetchDashboardData()).unwrap()
+    } catch {
+      // ignore — dashboard already shows error state
+    } finally {
       setIsRefreshing(false)
-    }, 1000)
+    }
   }
-
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() > 0.85 && activities.length > 0) {
-        const actions = ['assigned', 'updated', 'completed', 'commented on']
-        const staff = ['J.', 'M.', 'S.', 'R.', 'T.']
-        const issueIds = activities
-          .map((a) => a.action.match(/#(\d+)/))
-          .filter(Boolean)
-          .map((match) => match![1])
-        if (issueIds.length > 0) {
-          const randomIssue = issueIds[Math.floor(Math.random() * issueIds.length)]
-          dispatch(
-            addActivity({
-              id: `auto-${Date.now()}`,
-              action: `${staff[Math.floor(Math.random() * staff.length)]} ${
-                actions[Math.floor(Math.random() * actions.length)]
-              } #${randomIssue}`,
-              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            })
-          )
-        }
-      }
-    }, 30000)
-
-    return () => clearInterval(interval)
-  }, [dispatch, activities])
 
   return (
     <Card>
       <CardHeader
-        title="Activity Feed"
+        title="Recent Activity"
         action={
           <IconButton onClick={handleRefresh} disabled={isRefreshing}>
             {isRefreshing ? <CircularProgress size={20} /> : <RefreshIcon />}
@@ -73,7 +41,7 @@ const ActivityFeed: React.FC = () => {
       <CardContent sx={{ maxHeight: 300, overflowY: 'auto' }}>
         {activities.length === 0 ? (
           <Typography color="text.secondary" align="center" py={3}>
-            No activity yet
+            No recent activity
           </Typography>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -98,7 +66,7 @@ const ActivityFeed: React.FC = () => {
           </Box>
         )}
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-          Updates every 30 seconds • {activities.length} total activities
+          Based on recently updated issues · {activities.length} shown
         </Typography>
       </CardContent>
     </Card>

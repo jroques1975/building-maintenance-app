@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import {
   Box, Typography, Card, CardContent, Grid, Chip, Alert, CircularProgress,
   Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Divider, Button, Collapse,
+  Divider, Button, Collapse, TextField, InputAdornment, Stack,
 } from '@mui/material'
-import { Apartment as BuildingIcon, History as HistoryIcon, ExpandMore, ExpandLess } from '@mui/icons-material'
+import {
+  Apartment as BuildingIcon, History as HistoryIcon,
+  ExpandMore, ExpandLess, Search as SearchIcon,
+} from '@mui/icons-material'
+import { useNavigate } from 'react-router-dom'
 import { tokenService } from '../services/authService'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -49,6 +53,7 @@ const STATUS_COLOR: Record<string, any> = {
 }
 
 const BuildingRow: React.FC<{ building: BuildingWithOperator }> = ({ building }) => {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [timeline, setTimeline] = useState<OperatorPeriod[]>([])
   const [loadingTimeline, setLoadingTimeline] = useState(false)
@@ -79,14 +84,19 @@ const BuildingRow: React.FC<{ building: BuildingWithOperator }> = ({ building })
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="subtitle1" fontWeight={600}>
-                <BuildingIcon fontSize="small" sx={{ verticalAlign: 'middle', mr: 0.5 }} />
+              <Typography
+                variant="subtitle1"
+                fontWeight={600}
+                sx={{ cursor: 'pointer', '&:hover': { color: 'primary.main' }, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                onClick={() => navigate(`/buildings/${building.id}`)}
+              >
+                <BuildingIcon fontSize="small" />
                 {building.name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 {building.address}, {building.city}, {building.state}
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+              <Stack direction="row" spacing={2} sx={{ mt: 1 }} flexWrap="wrap">
                 <Typography variant="caption" color="text.secondary">
                   {building._count.units} units
                 </Typography>
@@ -96,10 +106,10 @@ const BuildingRow: React.FC<{ building: BuildingWithOperator }> = ({ building })
                 <Typography variant="caption" color="text.secondary">
                   {building._count.workOrders} work orders
                 </Typography>
-              </Box>
+              </Stack>
             </Box>
 
-            <Box sx={{ textAlign: 'right', ml: 2 }}>
+            <Box sx={{ textAlign: 'right', ml: 2, flexShrink: 0 }}>
               {operator ? (
                 <>
                   <Chip
@@ -205,6 +215,7 @@ const OperatorContinuityPage: React.FC = () => {
   const [buildings, setBuildings] = useState<BuildingWithOperator[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -222,31 +233,66 @@ const OperatorContinuityPage: React.FC = () => {
     load()
   }, [])
 
+  const filtered = useMemo(() => {
+    if (!search.trim()) return buildings
+    const q = search.toLowerCase()
+    return buildings.filter(b =>
+      b.name.toLowerCase().includes(q) ||
+      b.address.toLowerCase().includes(q) ||
+      b.city.toLowerCase().includes(q)
+    )
+  }, [buildings, search])
+
   const active = buildings.filter(b => b.currentOperatorPeriod?.status === 'ACTIVE').length
+  const pending = buildings.filter(b => b.currentOperatorPeriod?.status === 'PENDING').length
   const unassigned = buildings.filter(b => !b.currentOperatorPeriod).length
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>Operator Continuity</Typography>
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Building portfolio with management history and operator transitions.
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+        <Box>
+          <Typography variant="h4">Operator Continuity</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Building portfolio with management history and operator transitions.
+          </Typography>
+        </Box>
+      </Box>
 
       {/* Summary stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[
           { label: 'Total Buildings', value: buildings.length, color: 'primary.main' },
           { label: 'Active Operators', value: active, color: 'success.main' },
+          { label: 'Pending', value: pending, color: 'info.main' },
           { label: 'Unassigned', value: unassigned, color: 'warning.main' },
         ].map(s => (
-          <Grid item xs={4} sm={3} key={s.label}>
-            <Paper sx={{ p: 2, textAlign: 'center' }}>
-              <Typography variant="h4" sx={{ color: s.color }}>{s.value}</Typography>
-              <Typography variant="caption" color="text.secondary">{s.label}</Typography>
-            </Paper>
+          <Grid item xs={6} sm={3} key={s.label}>
+            <Card variant="outlined">
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" sx={{ color: s.color }}>{s.value}</Typography>
+                <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>
+
+      {/* Search */}
+      <TextField
+        size="small"
+        placeholder="Search by building name, address or city…"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        sx={{ mb: 2, maxWidth: 400 }}
+        fullWidth
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" />
+            </InputAdornment>
+          ),
+        }}
+      />
 
       {loading ? (
         <Box sx={{ py: 6, display: 'flex', justifyContent: 'center' }}>
@@ -254,10 +300,12 @@ const OperatorContinuityPage: React.FC = () => {
         </Box>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
-      ) : buildings.length === 0 ? (
-        <Alert severity="info">No buildings found in your portfolio.</Alert>
+      ) : filtered.length === 0 ? (
+        <Alert severity="info">
+          {search ? 'No buildings match your search.' : 'No buildings found in your portfolio.'}
+        </Alert>
       ) : (
-        buildings.map(building => (
+        filtered.map(building => (
           <BuildingRow key={building.id} building={building} />
         ))
       )}
