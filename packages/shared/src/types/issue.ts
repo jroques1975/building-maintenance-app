@@ -21,9 +21,10 @@ export interface Issue {
 
   // Relations (present when returned from API)
   submittedBy?: { id: string; firstName: string; lastName: string; email: string };
-  assignedTo?: { id: string; firstName: string; lastName: string; email: string; role: string };
+  assignedTo?: { id: string; firstName: string; lastName: string; email: string };
   building?: { id: string; name: string; address: string };
   unit?: { id: string; unitNumber: string };
+  _count?: { attachments: number; comments: number; workOrders: number };
 }
 
 export interface CreateIssueDto {

@@ -173,9 +173,12 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
     }
   }
 
-  const assignedStaffName = staff.find(s => s.id === issue.assignedToId)
-    ? `${staff.find(s => s.id === issue.assignedToId)!.firstName} ${staff.find(s => s.id === issue.assignedToId)!.lastName}`
-    : issue.assignedToId || 'Unassigned'
+  const staffMatch = staff.find(s => s.id === issue.assignedToId)
+  const assignedStaffName = staffMatch
+    ? `${staffMatch.firstName} ${staffMatch.lastName}`
+    : issue.assignedTo
+      ? `${issue.assignedTo.firstName} ${issue.assignedTo.lastName}`
+      : issue.assignedToId || 'Unassigned'
 
   return (
     <Dialog
