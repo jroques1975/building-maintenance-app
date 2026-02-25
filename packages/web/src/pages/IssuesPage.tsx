@@ -7,6 +7,9 @@ import { Assignment as IssueIcon, Search as SearchIcon } from '@mui/icons-materi
 import { useNavigate } from 'react-router-dom'
 import { Issue } from '@shared/types'
 import issueService from '../services/issueService'
+import { tokenService } from '../services/authService'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
 const STATUS_COLOR: Record<string, any> = {
   PENDING: 'default', IN_REVIEW: 'info', SCHEDULED: 'info',
@@ -16,15 +19,18 @@ const PRIORITY_COLOR: Record<string, any> = {
   LOW: 'success', MEDIUM: 'info', HIGH: 'warning', URGENT: 'error',
 }
 
-const TABS = [
-  { label: 'Open', statuses: ['PENDING', 'IN_REVIEW', 'SCHEDULED', 'IN_PROGRESS'] },
-  { label: 'Completed', statuses: ['COMPLETED'] },
-  { label: 'All', statuses: [] },
+// null = no status filter (All)
+const TABS: { label: string; status: string | null }[] = [
+  { label: 'All', status: null },
+  { label: 'Pending', status: 'PENDING' },
+  { label: 'In Progress', status: 'IN_PROGRESS' },
+  { label: 'Completed', status: 'COMPLETED' },
 ]
 
 const PAGE_LIMIT = 20
 
 interface Meta { total: number; page: number; totalPages: number }
+interface StatusCounts { PENDING: number; IN_PROGRESS: number; COMPLETED: number; total: number }
 
 const IssuesPage: React.FC = () => {
   const navigate = useNavigate()
@@ -35,12 +41,39 @@ const IssuesPage: React.FC = () => {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<Meta>({ total: 0, page: 1, totalPages: 1 })
+  const [counts, setCounts] = useState<StatusCounts>({ PENDING: 0, IN_PROGRESS: 0, COMPLETED: 0, total: 0 })
 
-  const load = async (p: number = page) => {
+  const currentStatus = TABS[tab].status
+
+  // Fetch global counts from stats summary
+  const loadCounts = async () => {
+    const token = tokenService.getToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${API_BASE}/issues/stats/summary`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const json = await res.json()
+      const byStatus: { status: string; _count: number }[] = json?.data?.byStatus ?? []
+      const get = (s: string) => byStatus.find(b => b.status === s)?._count ?? 0
+      const total = json?.data?.total ?? 0
+      setCounts({
+        PENDING: get('PENDING'),
+        IN_PROGRESS: get('IN_PROGRESS'),
+        COMPLETED: get('COMPLETED'),
+        total,
+      })
+    } catch {}
+  }
+
+  const load = async (p: number, status: string | null) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await issueService.getIssues({ page: p, limit: PAGE_LIMIT })
+      const filter: Record<string, any> = { page: p, limit: PAGE_LIMIT }
+      if (status) filter.status = status
+      const res = await issueService.getIssues(filter)
       setIssues(res.data)
       setMeta({ total: res.meta.total, page: res.meta.page, totalPages: res.meta.totalPages })
     } catch (e: any) {
@@ -50,37 +83,36 @@ const IssuesPage: React.FC = () => {
     }
   }
 
-  useEffect(() => { load(page) }, [page])
+  // Load counts once on mount
+  useEffect(() => { loadCounts() }, [])
 
-  // Reset to page 1 when tab or search changes
+  // Reload issues when tab or page changes
+  useEffect(() => { load(page, currentStatus) }, [page, currentStatus])
+
   const handleTabChange = (_: React.SyntheticEvent, v: number) => {
     setTab(v)
     setPage(1)
+    setSearch('')
   }
 
+  // Client-side search across the current page
   const filtered = useMemo(() => {
-    let list = issues
-    const tabStatuses = TABS[tab].statuses
-    if (tabStatuses.length > 0) {
-      list = list.filter(i => tabStatuses.includes(i.status))
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      list = list.filter(i =>
-        i.title.toLowerCase().includes(q) ||
-        i.description.toLowerCase().includes(q) ||
-        (i.category ?? '').toLowerCase().includes(q)
-      )
-    }
-    return list
-  }, [issues, tab, search])
+    if (!search.trim()) return issues
+    const q = search.toLowerCase()
+    return issues.filter(i =>
+      i.title.toLowerCase().includes(q) ||
+      i.description.toLowerCase().includes(q) ||
+      (i.category ?? '').toLowerCase().includes(q)
+    )
+  }, [issues, search])
 
-  const stats = useMemo(() => ({
-    open: issues.filter(i => ['PENDING', 'IN_REVIEW', 'SCHEDULED', 'IN_PROGRESS'].includes(i.status)).length,
-    urgent: issues.filter(i => i.priority === 'URGENT').length,
-    completed: issues.filter(i => i.status === 'COMPLETED').length,
-    total: meta.total,
-  }), [issues, meta.total])
+  const tabLabel = (t: typeof TABS[number]) => {
+    if (t.status === null) return `All (${counts.total})`
+    if (t.status === 'PENDING') return `Pending (${counts.PENDING})`
+    if (t.status === 'IN_PROGRESS') return `In Progress (${counts.IN_PROGRESS})`
+    if (t.status === 'COMPLETED') return `Completed (${counts.COMPLETED})`
+    return t.label
+  }
 
   return (
     <Box>
@@ -90,16 +122,16 @@ const IssuesPage: React.FC = () => {
           <Typography variant="h4">Issues</Typography>
           <Typography variant="body2" color="text.secondary">All maintenance requests across your portfolio</Typography>
         </Box>
-        <Button variant="outlined" onClick={() => load(page)}>Refresh</Button>
+        <Button variant="outlined" onClick={() => { load(page, currentStatus); loadCounts() }}>Refresh</Button>
       </Box>
 
       {/* Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[
-          { label: 'Total', value: stats.total, color: 'primary.main' },
-          { label: 'Open (page)', value: stats.open, color: 'warning.main' },
-          { label: 'Urgent (page)', value: stats.urgent, color: 'error.main' },
-          { label: 'Completed (page)', value: stats.completed, color: 'success.main' },
+          { label: 'Total', value: counts.total, color: 'primary.main' },
+          { label: 'Pending', value: counts.PENDING, color: 'warning.main' },
+          { label: 'In Progress', value: counts.IN_PROGRESS, color: 'info.main' },
+          { label: 'Completed', value: counts.COMPLETED, color: 'success.main' },
         ].map(s => (
           <Grid item xs={6} sm={3} key={s.label}>
             <Card variant="outlined">
@@ -112,20 +144,16 @@ const IssuesPage: React.FC = () => {
         ))}
       </Grid>
 
-      {/* Search + Tabs */}
+      {/* Tabs + Search */}
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2 }} alignItems="center">
         <Tabs value={tab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
           {TABS.map((t) => (
-            <Tab key={t.label} label={`${t.label} (${
-              t.statuses.length > 0
-                ? issues.filter(issue => t.statuses.includes(issue.status)).length
-                : issues.length
-            })`} />
+            <Tab key={t.label} label={tabLabel(t)} />
           ))}
         </Tabs>
         <TextField
           size="small"
-          placeholder="Search title, description, category…"
+          placeholder="Search this page…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           sx={{ flexGrow: 1, maxWidth: 360 }}
