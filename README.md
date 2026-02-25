@@ -1,170 +1,196 @@
 # Building Maintenance App
 
-A **multi-tenant SaaS platform** to streamline repair requests and preventive maintenance for HOA and property management operators.
+A multi-tenant SaaS platform to streamline repair requests and preventive maintenance for HOA and property management operators.
 
-## 🏗️ Architecture Overview
-
-### **Multi-Tenant SaaS Platform**
-- **Built for commercialization** from day one
-- **Tenant isolation** at database level (row-level security)
-- **Building-level canonical records** preserved across PM transitions
-- **Operator model:** HOA + Property Management (portfolio views by operator)
-- **Pricing tiers:** Starter, Professional, Enterprise
-- **Deployment options:** SaaS, Dedicated, On-premise
-
-### **Core Technology Stack**
-- **Frontend:** React Native (mobile) + React/TypeScript (web)
-- **Backend:** Node.js + Express + TypeScript
-- **Database:** PostgreSQL with Prisma ORM
-- **Authentication:** JWT with tenant context
-- **Real-time:** WebSockets for live updates
-- **Storage:** AWS S3 for tenant-specific media
-
-## 📁 Project Structure
-```
-Building Maintenance App/
-├── packages/                  # Monorepo packages
-│   ├── backend/              # Multi-tenant API server
-│   ├── web/                  # React web dashboard
-│   ├── mobile/               # React Native mobile app
-│   └── shared/               # Shared types & utilities
-├── 01-Project-Home/          # Executive summary, status, vision
-├── 02-Functional-Spec/       # User stories, use cases, backlog
-├── 03-Technical-Design/      # Architecture, database, tech decisions
-├── 04-UI-UX/                 # Wireframes, user flows, design system
-├── 05-Development/           # Sprint plans, code, testing
-├── 06-Deployment-Ops/        # Hosting, CI/CD, monitoring
-├── 07-Marketing-Launch/      # Go‑to‑market, onboarding
-└── 08-References/            # Competitors, regulations, contacts
-```
-
-## 🚀 Getting Started
-
-### 1. Understand the Architecture
-- Read **[Multi-Tenant Architecture](MULTI-TENANT-ARCHITECTURE.md)** for technical overview
-- Study **[System Architecture](03-Technical-Design/System-Architecture.md)** for component design
-- Review **[Tech Stack Decisions](03-Technical-Design/Tech-Stack-Decisions.md)** for technology choices
-
-### 2. Development Setup
-```bash
-# Clone repository
-git clone https://github.com/jroques1975/building-maintenance-app.git
-
-# Install dependencies
-npm install
-
-# Set up environment
-cp .env.example .env
-
-# Run development
-npm run dev
-```
-
-### 3. API Documentation
-- **Base URL:** `http://localhost:3001/api`
-- **Authentication:** JWT Bearer tokens with tenant context
-- **Tenant Signup:** `POST /api/tenants/signup`
-- **API Health:** `GET /api/health`
-
-## 🎯 Current Status (Sprint 2 Complete)
-
-### **✅ Completed:**
-1. **Multi-tenant database schema** with tenant isolation
-2. **Authentication middleware** with tenant context
-3. **Tenant management API** (signup, admin, super admin)
-4. **User research** (1 manager interview + 10 tenant surveys)
-5. **Updated personas** with real research data
-6. **Development environment** (Docker, CI/CD, testing)
-
-### **🚀 Next Sprint (Sprint 3 - UI/UX Design):**
-1. **Wireframe core features** based on research findings
-2. **Implement photo upload** (70% of tenants already use photos)
-3. **Real-time status tracking** (most requested feature)
-4. **SMS notifications** (70% tenant preference)
-
-## 🏢 Multi-Tenant Features
-
-### **Tenant Management:**
-- **Self-service signup** with 14-day trial
-- **Subdomain routing** (acme-properties.buildingapp.com)
-- **Plan enforcement** (Starter: 5 buildings, Pro: 50, Enterprise: unlimited)
-- **Usage analytics** per tenant
-
-### **Security & Isolation:**
-- **Row-level security** (all queries filtered by tenantId)
-- **Role-based access control** within tenant
-- **Audit logging** with tenant context
-- **Data export** for compliance
-
-### **Commercialization Ready:**
-- **Pricing tiers** with feature gates
-- **Billing integration** ready (Stripe/Paddle)
-- **White-label option** for enterprise
-- **On-premise deployment** path
-
-## 📊 Research Insights (Validated)
-
-### **Tenant Needs (10 surveys):**
-- **Top frustration:** Having to be home (60%)
-- **Communication preference:** SMS (70%)
-- **Tech readiness:** 80% comfortable with apps
-- **Photo usage:** 70% already take photos of issues
-
-### **Manager Needs (1 interview):**
-- **Visibility** into open/overdue tasks
-- **Real-time tracking** of maintenance status
-- **Miami-specific:** AC tracking, hurricane workflows
-- **Bilingual support** (English/Spanish)
-
-## 🛠 Development Commands
-
-```bash
-# Development
-npm run dev              # Start all services
-npm run dev:backend      # Backend only
-npm run dev:web          # Web dashboard
-npm run dev:mobile       # Mobile app
-
-# Database
-npm run db:migrate       # Run migrations
-npm run db:studio        # Open Prisma Studio
-npm run db:reset         # Reset database
-
-# Testing
-npm run test             # Run all tests
-npm run test:backend     # Backend tests
-npm run test:web         # Web tests
-
-# Production
-npm run build            # Build all packages
-npm run start            # Start production
-```
-
-## 📈 Deployment Options
-
-### **Option 1: SaaS Multi-tenant (Recommended)**
-- Shared PostgreSQL database
-- Tenant isolation at application level
-- Lowest operational cost
-- Fastest time to market
-
-### **Option 2: Dedicated Instances**
-- Database per tenant (or tenant group)
-- Better isolation for enterprise clients
-- Higher cost, higher margin
-
-### **Option 3: On-premise**
-- Docker/Kubernetes deployment
-- Full control for large organizations
-- Highest margin, most complex
-
-## 📞 Contact & Updates
-
-- **Project Lead:** Javier
-- **Technical Lead:** Orion (AI assistant)
-- **Repository:** https://github.com/jroques1975/building-maintenance-app
-- **Last Updated:** 2026‑02‑16
-- **Status:** Sprint 2 Complete - Multi-tenant foundation built
+Tenants submit issues → Managers assign to staff → Staff completes work orders.
 
 ---
-*This is a commercial-grade multi-tenant SaaS platform ready for MVP development and customer acquisition.*
+
+## Architecture Overview
+
+### Multi-Tenant Model
+- Building-centric records that persist across management company transitions
+- Tenant isolation at database level (row-level security via `tenantId` on all queries)
+- Role-based access: `TENANT`, `MAINTENANCE`, `MANAGER`, `ADMIN`, `SUPER_ADMIN`
+- Operator (management company) model with portfolio views across buildings
+
+### Technology Stack
+
+| Layer | Stack |
+|---|---|
+| Frontend web | React 18, TypeScript, MUI v5, Redux Toolkit, React Query, React Router v6, Vite |
+| Backend | Node.js, Express, TypeScript, Prisma v5 |
+| Database | PostgreSQL 16 |
+| Auth | JWT with tenant context |
+| Storage | AWS S3 (presigned PUT/GET, 1hr expiry) |
+| Validation | Zod (shared schemas in `packages/shared`) |
+| DevOps | Docker Compose, GitHub Actions CI, Husky pre-commit hooks |
+
+---
+
+## Project Structure
+
+```
+Building Maintenance App/
+├── packages/
+│   ├── backend/         Express API server (port 3002)
+│   ├── web/             React web dashboard (port 3000)
+│   ├── mobile/          React Native/Expo (boilerplate only)
+│   └── shared/          Shared TypeScript types, Zod schemas, constants
+├── 01-Project-Home/     Executive summary, status, vision
+├── 02-Functional-Spec/  User stories, use cases, backlog
+├── 03-Technical-Design/ Architecture, database, tech decisions
+├── 04-UI-UX/            Wireframes, user flows, design system
+├── 05-Development/      Sprint plans, implementation status, testing
+├── 06-Deployment-Ops/   Hosting, CI/CD, monitoring
+├── 07-Marketing-Launch/ Go-to-market, onboarding
+└── 08-References/       Competitors, regulations, contacts
+```
+
+---
+
+## Development Setup
+
+### Prerequisites
+- Node.js 20+
+- Docker (for PostgreSQL)
+- AWS credentials with access to `amzn-building-app` S3 bucket
+
+### Running locally
+
+```bash
+# Backend (port 3002)
+cd packages/backend
+PORT=3002 npm run dev
+
+# Web (port 3000)
+cd packages/web
+npm run dev -- --host 0.0.0.0 --port 3000
+```
+
+### Environment
+
+`packages/web/.env`:
+```
+VITE_API_URL=http://localhost:3002/api
+VITE_ENABLE_MOCK_API=false
+```
+
+### Database
+
+```bash
+cd packages/backend
+npx prisma db push          # Apply schema changes
+npx prisma db seed          # Seed test data (60+ users)
+npx prisma studio           # Open Prisma Studio GUI
+```
+
+### Test credentials (password: `password123`)
+
+| Role | Email |
+|---|---|
+| Admin | `admin@skylinemanagement.com` |
+| Manager | `sarah.johnson@skylinemanagement.com` |
+| Manager | `robert.garcia@skylinemanagement.com` |
+| Maintenance | `james.wilson@skylinemanagement.com` |
+| Maintenance | `maria.rodriguez@skylinemanagement.com` |
+| Tenant | `alex.martin@example.com` |
+| Tenant | `jennifer.lee@example.com` |
+
+---
+
+## Pages & Routes
+
+| Route | Page | Roles |
+|---|---|---|
+| `/` | Role-routed dashboard | All |
+| `/issues` | Issues list (paginated, server-side search) | MAINTENANCE, MANAGER, ADMIN |
+| `/issues/:id` | Issue detail (linked WOs, comments, assign/status) | All |
+| `/work-orders` | Work orders list (paginated) | MANAGER, ADMIN |
+| `/work-orders/:id` | Work order detail | MAINTENANCE, MANAGER, ADMIN |
+| `/operator-continuity` | Portfolio + per-building timeline | MANAGER, ADMIN |
+| `/users` | User management (deactivate/soft-delete) | ADMIN, SUPER_ADMIN |
+| `/buildings` | Buildings list | MANAGER, ADMIN |
+| `/buildings/:id` | Building detail | MANAGER, ADMIN |
+| `/login`, `/register` | Public | — |
+
+### Dashboard routing by role
+- `TENANT` → TenantDashboard
+- `MAINTENANCE` → MaintenanceDashboard
+- `MANAGER` → ManagerDashboard
+- `ADMIN` / `SUPER_ADMIN` → AdminDashboard
+
+---
+
+## API
+
+- **Base URL:** `http://localhost:3002/api`
+- **Auth:** `Authorization: Bearer <jwt>`
+- All routes carry tenant context via JWT claims.
+
+Registered route groups: `/api/issues`, `/api/work-orders`, `/api/buildings`, `/api/users`, `/api/operators`, `/api/auth`
+
+---
+
+## Design System
+
+**Status: LOCKED** (`05-Development/DESIGN-STYLE-LOCK.md`)
+
+| Token | Value |
+|---|---|
+| Background | Soft blue gradient `#f0f8ff` → `#e6f2ff` |
+| Surface | White cards, 16px border-radius, subtle shadow |
+| Primary | iOS blue `#007AFF` |
+| Border | `#dee2e6` / input `#ced4da` |
+| Typography | System font stack (`-apple-system`, `Segoe UI`, Roboto) |
+| Buttons | Blue primary, 8px radius, white text |
+| Inputs | 2px border, 10px radius, blue focus |
+
+Canonical UI prototypes (source of truth):
+- Tenant: `http://100.78.107.25:8088/prototype-clean.html`
+- Manager: `http://100.78.107.25:8088/manager-dashboard/manager-dashboard.html`
+
+---
+
+## What's Working (Feb 2026)
+
+- JWT auth + tenant context on all routes; role-based authorization middleware
+- All dashboards wired to live API (no mock data except AdminDashboard system health metrics)
+- Issues: full CRUD, server-side search (400ms debounce), photo attachments (up to 4, S3 presigned), assign + status update
+- Work orders: full CRUD, role-gated actions, linked issues
+- Operator Continuity: portfolio view, per-building timeline, search filter
+- Buildings: list + detail pages
+- Users: list, deactivate/soft-delete, `isActive` + `lastLoginAt` fields
+- Pagination: server-side, 20 items/page on Issues and Work Orders
+- Vite code splitting via `React.lazy` (per-page chunks)
+- Multi-tenant isolation, Docker dev environment, seed data, CI pipelines
+
+---
+
+## Known Issues / Technical Debt
+
+1. **ActivityFeed** — Derived from 8 most recently updated issues; no dedicated activity log table.
+2. **AdminDashboard system health** — API response time, DB connections, uptime are hardcoded metrics.
+
+---
+
+## Next Steps
+
+1. **UI polish** — Full visual parity against canonical prototypes across all pages.
+
+---
+
+## Key Reference Files
+
+- `packages/backend/prisma/schema.prisma` — DB schema (11 models, 9 enums)
+- `packages/backend/prisma/seed.ts` — Test data
+- `packages/web/src/App.tsx` — React Router + protected routes
+- `05-Development/DESIGN-STYLE-LOCK.md` — Visual design tokens (locked)
+- `05-Development/UI-SOURCE-OF-TRUTH.md` — Canonical prototype references
+- `05-Development/PHASE-IMPLEMENTATION-STATUS-2026-02-21.md` — Last sprint status
+- `Agent continuity.md` — Handoff doc with runtime/seed/known issues
+
+---
+
+**Last Updated:** 2026-02-25
+**Repository:** https://github.com/jroques1975/building-maintenance-app
