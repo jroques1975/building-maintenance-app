@@ -4,8 +4,9 @@ import {
   TextField, InputAdornment, Stack, Button, Tabs, Tab, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions,
   FormControl, InputLabel, Select, MenuItem,
+  Tooltip, IconButton,
 } from '@mui/material'
-import { Search as SearchIcon, Person as PersonIcon, Add as AddIcon } from '@mui/icons-material'
+import { Search as SearchIcon, Person as PersonIcon, Add as AddIcon, Block as BlockIcon } from '@mui/icons-material'
 import { tokenService } from '../services/authService'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
@@ -35,6 +36,7 @@ interface UserRecord {
   lastName: string
   phone?: string
   role: string
+  isActive: boolean
   position?: string
   employeeId?: string
   apartment?: string
@@ -81,6 +83,10 @@ const UsersPage: React.FC = () => {
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [formError, setFormError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+
+  // Deactivate confirm dialog
+  const [deactivateTarget, setDeactivateTarget] = useState<UserRecord | null>(null)
+  const [deactivating, setDeactivating] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -154,6 +160,21 @@ const UsersPage: React.FC = () => {
       setFormError(e?.message || 'Failed to create user')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!deactivateTarget) return
+    setDeactivating(true)
+    try {
+      await authFetch(`/users/${deactivateTarget.id}`, { method: 'DELETE' })
+      setDeactivateTarget(null)
+      await load()
+    } catch (e: any) {
+      setError(e?.message || 'Failed to deactivate user')
+      setDeactivateTarget(null)
+    } finally {
+      setDeactivating(false)
     }
   }
 
@@ -249,12 +270,23 @@ const UsersPage: React.FC = () => {
                         {user.email}
                       </Typography>
                     </Box>
-                    <Chip
-                      label={ROLE_LABEL[user.role] ?? user.role}
-                      color={ROLE_COLOR[user.role] ?? 'default'}
-                      size="small"
-                      variant="outlined"
-                    />
+                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{ flexShrink: 0 }}>
+                      <Chip
+                        label={ROLE_LABEL[user.role] ?? user.role}
+                        color={ROLE_COLOR[user.role] ?? 'default'}
+                        size="small"
+                        variant="outlined"
+                      />
+                      <Tooltip title="Deactivate user">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => setDeactivateTarget(user)}
+                        >
+                          <BlockIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </Box>
 
                   {user.building && (
@@ -291,6 +323,24 @@ const UsersPage: React.FC = () => {
           ))}
         </Grid>
       )}
+
+      {/* Deactivate Confirmation Dialog */}
+      <Dialog open={!!deactivateTarget} onClose={() => setDeactivateTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Deactivate User</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to deactivate{' '}
+            <strong>{deactivateTarget?.firstName} {deactivateTarget?.lastName}</strong>?
+            They will no longer be able to log in.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeactivateTarget(null)} color="inherit">Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleDeactivate} disabled={deactivating}>
+            {deactivating ? <CircularProgress size={20} /> : 'Deactivate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Create User Dialog */}
       <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
