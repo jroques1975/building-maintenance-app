@@ -5,7 +5,7 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import { useNavigate } from 'react-router-dom'
 import { useAppSelector, useAppDispatch } from '../../store'
-import { fetchDashboardData, addActivity } from '../../store/dashboardSlice'
+import { fetchDashboardData } from '../../store/dashboardSlice'
 
 const QuickActions: React.FC = () => {
   const navigate = useNavigate()
@@ -15,11 +15,6 @@ const QuickActions: React.FC = () => {
 
   const handleRefresh = () => {
     dispatch(fetchDashboardData())
-    dispatch(addActivity({
-      id: `refresh-${Date.now()}`,
-      action: 'Dashboard data refreshed',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }))
   }
 
   const handleExport = () => {

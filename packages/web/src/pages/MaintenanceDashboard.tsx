@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import {
-  Box, Typography, Paper, Button, Grid, Card, CardContent, Chip,
-  Alert, Tabs, Tab, CircularProgress,
+  Box, Typography, Button, Grid, Card, CardContent, Chip,
+  Alert, Tabs, Tab, CircularProgress, Paper,
 } from '@mui/material'
 import { Assignment as WorkIcon, CheckCircle, Schedule, Build } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
@@ -99,10 +99,12 @@ const MaintenanceDashboard: React.FC = () => {
           { label: 'Completed', value: stats.completed, color: 'success.main' },
         ].map(s => (
           <Grid item xs={12} sm={6} md={3} key={s.label}>
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="h3" sx={{ color: s.color }}>{s.value}</Typography>
-              <Typography variant="body2" color="text.secondary">{s.label}</Typography>
-            </Paper>
+            <Card variant="outlined">
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" sx={{ color: s.color }}>{s.value}</Typography>
+                <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>

@@ -182,7 +182,17 @@ const WorkOrderDetailPage = () => {
           <>
             <Divider sx={{ my: 2 }} />
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>Related Issue</Typography>
-            <Typography variant="body2">{workOrder.issue.title} — {workOrder.issue.status}</Typography>
+            <Button
+              variant="text"
+              size="small"
+              sx={{ p: 0, textAlign: 'left', textTransform: 'none' }}
+              onClick={() => navigate(`/issues/${workOrder.issueId}`)}
+            >
+              {workOrder.issue.title}
+            </Button>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+              — {workOrder.issue.status.replace(/_/g, ' ')}
+            </Typography>
           </>
         )}
       </Paper>
