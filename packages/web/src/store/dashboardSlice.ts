@@ -147,12 +147,12 @@ const dashboardSlice = createSlice({
   reducers: {
     setFilter: (state, action: PayloadAction<IssueFilter>) => {
       state.filter = action.payload
-      // Apply filter logic
-      const { priority, status, category } = action.payload
+      const { priority, status, category, assignedToId } = action.payload
       state.filteredIssues = state.issues.filter(issue => {
         if (priority && issue.priority !== priority) return false
         if (status && issue.status !== status) return false
         if (category && issue.category !== category) return false
+        if (assignedToId && issue.assignedToId !== assignedToId) return false
         return true
       })
     },

@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../../store'
 import IssueDetailModal from './IssueDetailModal'
 import { Issue } from '@shared/types'
@@ -24,6 +25,7 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter, 
   const { filteredIssues } = useAppSelector((state) => state.dashboard)
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const navigate = useNavigate()
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -143,6 +145,13 @@ const IssueQueue: React.FC<IssueQueueProps> = ({ onFilterChange, currentFilter, 
                   </Typography>
                 </Box>
               ))}
+            </Box>
+          )}
+          {filteredIssues.length > 10 && (
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Button size="small" variant="text" onClick={() => navigate('/issues')}>
+                View all {filteredIssues.length} issues
+              </Button>
             </Box>
           )}
         </CardContent>

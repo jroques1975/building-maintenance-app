@@ -219,7 +219,9 @@ const IssueDetailModal: React.FC<IssueDetailModalProps> = ({
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2 }}>
             <Box>
               <Typography variant="caption" color="text.secondary">Unit</Typography>
-              <Typography variant="body1">{issue.unitId || 'N/A'}</Typography>
+              <Typography variant="body1">
+                {issue.unit?.unitNumber ?? (issue.unitId ? issue.unitId.slice(0, 8) : 'N/A')}
+              </Typography>
             </Box>
             <Box>
               <Typography variant="caption" color="text.secondary">Category</Typography>
