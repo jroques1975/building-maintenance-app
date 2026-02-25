@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Box, Typography, Card, CardContent, Chip, Grid, Alert, CircularProgress,
   Tabs, Tab, TextField, InputAdornment, Stack, Button,
@@ -39,11 +39,21 @@ const IssuesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState(0)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
   const [meta, setMeta] = useState<Meta>({ total: 0, page: 1, totalPages: 1 })
   const [counts, setCounts] = useState<StatusCounts>({ PENDING: 0, IN_PROGRESS: 0, COMPLETED: 0, total: 0 })
 
   const currentStatus = TABS[tab].status
+
+  // Debounce search input — resets page to 1 after 400ms of inactivity
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search)
+      setPage(1)
+    }, 400)
+    return () => clearTimeout(t)
+  }, [search])
 
   // Fetch global counts from stats summary
   const loadCounts = async () => {
@@ -67,12 +77,13 @@ const IssuesPage: React.FC = () => {
     } catch {}
   }
 
-  const load = async (p: number, status: string | null) => {
+  const load = async (p: number, status: string | null, searchTerm: string) => {
     setLoading(true)
     setError(null)
     try {
       const filter: Record<string, any> = { page: p, limit: PAGE_LIMIT }
       if (status) filter.status = status
+      if (searchTerm.trim()) filter.search = searchTerm.trim()
       const res = await issueService.getIssues(filter)
       setIssues(res.data)
       setMeta({ total: res.meta.total, page: res.meta.page, totalPages: res.meta.totalPages })
@@ -86,8 +97,8 @@ const IssuesPage: React.FC = () => {
   // Load counts once on mount
   useEffect(() => { loadCounts() }, [])
 
-  // Reload issues when tab or page changes
-  useEffect(() => { load(page, currentStatus) }, [page, currentStatus])
+  // Reload issues when tab, page, or debounced search changes
+  useEffect(() => { load(page, currentStatus, debouncedSearch) }, [page, currentStatus, debouncedSearch])
 
   const handleTabChange = (_: React.SyntheticEvent, v: number) => {
     setTab(v)
@@ -95,16 +106,8 @@ const IssuesPage: React.FC = () => {
     setSearch('')
   }
 
-  // Client-side search across the current page
-  const filtered = useMemo(() => {
-    if (!search.trim()) return issues
-    const q = search.toLowerCase()
-    return issues.filter(i =>
-      i.title.toLowerCase().includes(q) ||
-      i.description.toLowerCase().includes(q) ||
-      (i.category ?? '').toLowerCase().includes(q)
-    )
-  }, [issues, search])
+  // Issues are already filtered server-side; no client-side filter needed
+  const filtered = issues
 
   const tabLabel = (t: typeof TABS[number]) => {
     if (t.status === null) return `All (${counts.total})`
@@ -122,7 +125,7 @@ const IssuesPage: React.FC = () => {
           <Typography variant="h4">Issues</Typography>
           <Typography variant="body2" color="text.secondary">All maintenance requests across your portfolio</Typography>
         </Box>
-        <Button variant="outlined" onClick={() => { load(page, currentStatus); loadCounts() }}>Refresh</Button>
+        <Button variant="outlined" onClick={() => { load(page, currentStatus, debouncedSearch); loadCounts() }}>Refresh</Button>
       </Box>
 
       {/* Stats */}
@@ -153,7 +156,7 @@ const IssuesPage: React.FC = () => {
         </Tabs>
         <TextField
           size="small"
-          placeholder="Search this page…"
+          placeholder="Search title, description…"
           value={search}
           onChange={e => setSearch(e.target.value)}
           sx={{ flexGrow: 1, maxWidth: 360 }}

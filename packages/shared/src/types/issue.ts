@@ -113,6 +113,7 @@ export interface IssueFilter {
   assignedToId?: string;
   startDate?: Date;
   endDate?: Date;
+  search?: string;
   page?: number;
   limit?: number;
 }

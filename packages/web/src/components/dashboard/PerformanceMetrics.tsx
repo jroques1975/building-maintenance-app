@@ -37,22 +37,14 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ stats }) => {
       description: 'Time from report to resolution',
     },
     {
-      title: 'Tenant Satisfaction',
+      title: 'Completion Rate',
       value: stats.tenantSatisfaction > 0 ? `${stats.tenantSatisfaction}%` : '—',
-      target: '90%',
+      target: '80%',
       progress: stats.tenantSatisfaction,
-      status: (stats.tenantSatisfaction === 0 || stats.tenantSatisfaction >= 90 ? 'good' : 'warning') as 'good' | 'warning',
-      description: 'Based on post-resolution surveys',
+      status: (stats.tenantSatisfaction === 0 || stats.tenantSatisfaction >= 80 ? 'good' : 'warning') as 'good' | 'warning',
+      description: '% of all reported issues fully resolved',
     },
-    {
-      title: 'Cost Per Unit',
-      value: stats.costPerUnit > 0 ? `$${stats.costPerUnit}` : '—',
-      target: '$50',
-      progress: stats.costPerUnit > 0 ? Math.min((stats.costPerUnit / 50) * 100, 100) : 0,
-      status: (stats.costPerUnit === 0 || stats.costPerUnit <= 50 ? 'good' : 'warning') as 'good' | 'warning',
-      description: 'Monthly maintenance cost per unit',
-    },
-  ]
+  ].filter(m => m.value !== '—')
 
   const getStatusColor = (status: 'good' | 'warning') => {
     return status === 'good' ? 'success' : 'warning'

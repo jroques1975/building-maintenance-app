@@ -49,10 +49,10 @@ const initialState: DashboardState = {
     urgentIssues: 0,
     todayDue: 0,
     agingIssues: 0,
-    avgResponseTime: '4.2h',
-    avgCompletionTime: '1.8d',
-    tenantSatisfaction: 92,
-    costPerUnit: 45,
+    avgResponseTime: '—',
+    avgCompletionTime: '—',
+    tenantSatisfaction: 0,
+    costPerUnit: 0,
   },
   activities: [],
   isLoading: false,
@@ -84,6 +84,11 @@ export const fetchDashboardData = createAsyncThunk(
         .filter(s => openStatuses.includes(s.status))
         .reduce((sum, s) => sum + s._count, 0)
       const urgentIssues = byPriority.find(p => p.priority === 'URGENT')?._count ?? 0
+
+      // Completion rate: % of all issues that are COMPLETED
+      const totalIssues = byStatus.reduce((sum, s) => sum + s._count, 0)
+      const completedCount = byStatus.find(s => s.status === 'COMPLETED')?._count ?? 0
+      const completionRate = totalIssues > 0 ? Math.round((completedCount / totalIssues) * 100) : 0
 
       // Compute todayDue: issues scheduled for today that are not completed/cancelled
       const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
@@ -130,7 +135,7 @@ export const fetchDashboardData = createAsyncThunk(
           agingIssues,
           avgResponseTime: '—',
           avgCompletionTime,
-          tenantSatisfaction: 0,
+          tenantSatisfaction: completionRate,
           costPerUnit: 0,
         },
         activities,
