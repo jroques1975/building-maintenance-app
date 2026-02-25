@@ -377,6 +377,34 @@ const IssueDetailPage = () => {
         </Paper>
       )}
 
+      {/* Photos */}
+      {issue.attachments && issue.attachments.length > 0 && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Photos ({issue.attachments.length})
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+            {issue.attachments.map(a => (
+              <Box
+                key={a.id}
+                component="a"
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ display: 'block', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider', '&:hover': { opacity: 0.85 } }}
+              >
+                <Box
+                  component="img"
+                  src={a.url}
+                  alt={a.filename}
+                  sx={{ width: 120, height: 120, objectFit: 'cover', display: 'block' }}
+                />
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
+
       {/* Create Work Order dialog */}
       <Dialog open={woOpen} onClose={() => setWoOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Create Work Order</DialogTitle>

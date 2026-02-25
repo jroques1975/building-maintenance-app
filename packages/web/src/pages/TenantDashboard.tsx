@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Typography,
-  Paper,
   Button,
   Grid,
   Card,
@@ -15,11 +14,14 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  IconButton,
+  Stack,
 } from '@mui/material'
-import { Add as AddIcon, Assignment as IssueIcon } from '@mui/icons-material'
+import { Add as AddIcon, Assignment as IssueIcon, CameraAlt as CameraIcon, Close as CloseIcon } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '../store'
 import issueService from '../services/issueService'
+import { uploadPhoto, UploadedAttachment } from '../services/uploadService'
 import { Issue, Priority } from '@shared/types'
 
 const TenantDashboard: React.FC = () => {
@@ -37,6 +39,12 @@ const TenantDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [issues, setIssues] = useState<Issue[]>([])
+
+  // Photo state for new issue dialog
+  const [photos, setPhotos] = useState<File[]>([])
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const refresh = async () => {
     setIsLoading(true)
@@ -64,7 +72,30 @@ const TenantDashboard: React.FC = () => {
   }, [issues])
 
   const handleOpenNewIssue = () => setOpenNewIssue(true)
-  const handleCloseNewIssue = () => setOpenNewIssue(false)
+  const handleCloseNewIssue = () => {
+    setOpenNewIssue(false)
+    setPhotos([])
+    setPhotoPreviews([])
+  }
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    const remaining = 4 - photos.length
+    const toAdd = files.slice(0, remaining)
+    setPhotos(prev => [...prev, ...toAdd])
+    setPhotoPreviews(prev => [
+      ...prev,
+      ...toAdd.map(f => URL.createObjectURL(f)),
+    ])
+    // reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleRemovePhoto = (i: number) => {
+    URL.revokeObjectURL(photoPreviews[i])
+    setPhotos(prev => prev.filter((_, idx) => idx !== i))
+    setPhotoPreviews(prev => prev.filter((_, idx) => idx !== i))
+  }
 
   const handleSubmitIssue = async () => {
     try {
@@ -76,6 +107,14 @@ const TenantDashboard: React.FC = () => {
         throw new Error('We could not determine your building. Ask management to assign your unit/building.')
       }
 
+      // Upload photos first (if any)
+      let attachments: UploadedAttachment[] = []
+      if (photos.length > 0) {
+        setUploadingPhotos(true)
+        attachments = await Promise.all(photos.map(f => uploadPhoto(f, buildingId)))
+        setUploadingPhotos(false)
+      }
+
       await issueService.createIssue({
         title: newIssue.title,
         description: newIssue.description,
@@ -84,12 +123,14 @@ const TenantDashboard: React.FC = () => {
         buildingId,
         unitId: unitId || undefined,
         location: newIssue.location || undefined,
+        ...(attachments.length > 0 ? { attachments } : {}),
       })
 
       handleCloseNewIssue()
       setNewIssue({ title: '', description: '', category: 'OTHER', priority: 'MEDIUM' as Priority, location: '' })
       await refresh()
     } catch (e: any) {
+      setUploadingPhotos(false)
       setError(e?.message || 'Failed to submit request')
     }
   }
@@ -124,47 +165,22 @@ const TenantDashboard: React.FC = () => {
       </Typography>
 
       {/* Quick Stats */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: 'primary.main' }}>
-              {stats.total}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Total Issues
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: 'warning.main' }}>
-              {stats.inProgress}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              In Progress
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: 'info.main' }}>
-              {stats.scheduled}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Scheduled
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Typography variant="h3" sx={{ color: 'success.main' }}>
-              {stats.completed}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Completed
-            </Typography>
-          </Paper>
-        </Grid>
+      <Grid container spacing={2} sx={{ mb: 4 }}>
+        {[
+          { label: 'Total Issues', value: stats.total, color: 'primary.main' },
+          { label: 'In Progress', value: stats.inProgress, color: 'warning.main' },
+          { label: 'Scheduled', value: stats.scheduled, color: 'info.main' },
+          { label: 'Completed', value: stats.completed, color: 'success.main' },
+        ].map(s => (
+          <Grid item xs={6} sm={3} key={s.label}>
+            <Card variant="outlined">
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h4" sx={{ color: s.color }}>{s.value}</Typography>
+                <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
       {/* Action Bar */}
@@ -303,10 +319,55 @@ const TenantDashboard: React.FC = () => {
             <option value="HIGH">High</option>
             <option value="URGENT">Urgent</option>
           </TextField>
+          {/* Photo picker */}
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              Photos (up to 4)
+            </Typography>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handlePhotoSelect}
+            />
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {photoPreviews.map((src, i) => (
+                <Box key={i} sx={{ position: 'relative', width: 72, height: 72 }}>
+                  <Box
+                    component="img"
+                    src={src}
+                    sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}
+                  />
+                  <IconButton
+                    size="small"
+                    onClick={() => handleRemovePhoto(i)}
+                    sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper', p: 0.25 }}
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+              {photos.length < 4 && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<CameraIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{ width: 72, height: 72, flexDirection: 'column', gap: 0.5, fontSize: 10 }}
+                >
+                  Add
+                </Button>
+              )}
+            </Stack>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseNewIssue}>Cancel</Button>
-          <Button onClick={handleSubmitIssue} variant="contained">Submit Request</Button>
+          <Button onClick={handleSubmitIssue} variant="contained" disabled={uploadingPhotos}>
+            {uploadingPhotos ? <CircularProgress size={20} /> : 'Submit Request'}
+          </Button>
         </DialogActions>
       </Dialog>
 

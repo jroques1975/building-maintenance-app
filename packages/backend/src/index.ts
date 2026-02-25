@@ -13,6 +13,7 @@ import { healthRoutes } from './routes/health.routes';
 import { operatorRoutes } from './routes/operator.routes';
 import { buildingRoutes } from './routes/building.routes';
 import { userRoutes } from './routes/user.routes';
+import { uploadRoutes } from './routes/upload.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.use('/api/issues', issueRoutes);    // Issue management (within tenant)
 app.use('/api/work-orders', workOrderRoutes); // Work order management (within tenant)
 app.use('/api/buildings', buildingRoutes);   // Building management
 app.use('/api/users', userRoutes);           // User management
+app.use('/api/uploads', uploadRoutes);       // S3 presigned URL generation
 
 // Error handling
 app.use(notFoundHandler);

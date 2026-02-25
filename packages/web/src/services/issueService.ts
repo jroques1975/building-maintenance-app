@@ -134,8 +134,15 @@ const issueService = {
     if (ENABLE_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 400));
       const newIssue: Issue = {
-        ...issueData,
         id: `mock-${Date.now()}`,
+        title: issueData.title,
+        description: issueData.description,
+        priority: issueData.priority,
+        category: issueData.category,
+        buildingId: issueData.buildingId,
+        unitId: issueData.unitId,
+        location: issueData.location,
+        estimatedCost: issueData.estimatedCost,
         status: 'PENDING',
         createdAt: new Date(),
         updatedAt: new Date(),

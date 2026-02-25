@@ -27,6 +27,12 @@ export interface Issue {
   _count?: { attachments: number; comments: number; workOrders: number };
 
   // Detail-level relations (only in GET /issues/:id)
+  attachments?: Array<{
+    id: string;
+    filename: string;
+    url: string;
+    createdAt: Date | string;
+  }>;
   comments?: Array<{
     id: string;
     content: string;
@@ -56,6 +62,12 @@ export interface CreateIssueDto {
   location?: string;
   estimatedCost?: number;
   scheduledDate?: Date;
+  attachments?: Array<{
+    filename: string;
+    fileType: string;
+    fileSize: number;
+    url: string;
+  }>;
 }
 
 export interface UpdateIssueDto {
