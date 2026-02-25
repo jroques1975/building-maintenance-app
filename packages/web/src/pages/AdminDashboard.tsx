@@ -65,6 +65,7 @@ const AdminDashboard: React.FC = () => {
   const { user } = useAppSelector((state) => state.auth)
   const [buildings, setBuildings] = useState<Building[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
+  const [userTotal, setUserTotal] = useState<number | null>(null)
   const [issueStats, setIssueStats] = useState<{ open: number; total: number; urgent: number } | null>(null)
   const [workOrderStats, setWorkOrderStats] = useState<{ active: number; total: number } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -87,6 +88,7 @@ const AdminDashboard: React.FC = () => {
         }
         if (usersJson.status === 'fulfilled') {
           setUsers(usersJson.value?.data?.users ?? [])
+          setUserTotal(usersJson.value?.meta?.total ?? null)
         }
         if (issuesJson.status === 'fulfilled') {
           const d = issuesJson.value?.data ?? {}
@@ -142,9 +144,9 @@ const AdminDashboard: React.FC = () => {
           <Card>
             <CardContent sx={{ textAlign: 'center' }}>
               <PeopleIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4">{users.length}</Typography>
+              <Typography variant="h4">{userTotal ?? users.length}</Typography>
               <Typography variant="body2" color="text.secondary">Users</Typography>
-              <Typography variant="caption" color="text.secondary">Active members</Typography>
+              <Typography variant="caption" color="text.secondary">Staff members</Typography>
             </CardContent>
           </Card>
         </Grid>
