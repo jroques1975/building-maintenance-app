@@ -4,6 +4,7 @@ import { prisma } from '../prisma/client';
 import { AppError } from '../middleware/errorHandler';
 import { authenticateWithTenant, authorize } from '../middleware/auth-tenant.combined';
 import { UserRole, IssueCategory, IssuePriority, IssueStatus } from '../types/prisma-enums';
+import { signAttachments } from '../services/s3.service';
 
 const router = Router();
 
@@ -676,9 +677,10 @@ router.get('/:id', authenticateWithTenant, authorize(['TENANT', 'MAINTENANCE', '
       }
     }
 
+    const signedAttachments = await signAttachments(issue.attachments ?? []);
     res.json({
       status: 'success',
-      data: { issue },
+      data: { issue: { ...issue, attachments: signedAttachments } },
     });
   } catch (error) {
     next(error);

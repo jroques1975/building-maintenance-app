@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 
@@ -51,4 +51,39 @@ export async function createPresignedPut(
   const fileUrl = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
 
   return { presignedUrl, fileUrl, key };
+}
+
+/**
+ * Extract the S3 object key from a stored fileUrl.
+ * e.g. https://bucket.s3.region.amazonaws.com/issues/xyz/uuid.jpg → issues/xyz/uuid.jpg
+ */
+export function keyFromUrl(url: string): string {
+  const match = url.match(/amazonaws\.com\/(.+)$/);
+  return match ? match[1] : url;
+}
+
+/**
+ * Generate a presigned GET URL for a private S3 object.
+ * Falls back to the original url if S3 is not configured.
+ */
+export async function createPresignedGet(
+  url: string,
+  expiresIn = 3600, // 1 hour
+): Promise<string> {
+  if (!BUCKET) return url;
+  const key = keyFromUrl(url);
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+  return getSignedUrl(getClient(), command, { expiresIn });
+}
+
+/**
+ * Sign all attachment URLs in a list. Safe to call with an empty array.
+ */
+export async function signAttachments<T extends { url: string }>(
+  attachments: T[],
+): Promise<T[]> {
+  if (!attachments.length || !BUCKET) return attachments;
+  return Promise.all(
+    attachments.map(async (a) => ({ ...a, url: await createPresignedGet(a.url) })),
+  );
 }
