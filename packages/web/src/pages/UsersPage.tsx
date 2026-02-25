@@ -2,17 +2,24 @@ import React, { useEffect, useState, useMemo } from 'react'
 import {
   Box, Typography, Card, CardContent, Chip, Grid, Alert, CircularProgress,
   TextField, InputAdornment, Stack, Button, Tabs, Tab, Avatar,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material'
-import { Search as SearchIcon, Person as PersonIcon } from '@mui/icons-material'
+import { Search as SearchIcon, Person as PersonIcon, Add as AddIcon } from '@mui/icons-material'
 import { tokenService } from '../services/authService'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
-async function authFetch(path: string) {
+async function authFetch(path: string, options: RequestInit = {}) {
   const token = tokenService.getToken()
   if (!token) throw new Error('Not authenticated')
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      ...(options.headers ?? {}),
+    },
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -28,16 +35,16 @@ interface UserRecord {
   lastName: string
   phone?: string
   role: string
-  isActive: boolean
   position?: string
   employeeId?: string
   apartment?: string
-  lastLoginAt?: string
   createdAt: string
   building?: { id: string; name: string; address: string }
   unit?: { id: string; unitNumber: string; type: string }
   _count?: { submittedIssues: number; assignedWorkOrders: number }
 }
+
+interface Building { id: string; name: string; address: string }
 
 const ROLE_COLOR: Record<string, any> = {
   TENANT: 'success', MAINTENANCE: 'warning', MANAGER: 'info',
@@ -49,25 +56,42 @@ const ROLE_LABEL: Record<string, string> = {
   ADMIN: 'Admin', SUPER_ADMIN: 'Super Admin', BUILDING_OWNER: 'Building Owner',
 }
 
-const ROLE_TABS = ['All', 'TENANT', 'MAINTENANCE', 'MANAGER', 'ADMIN']
+const ROLE_TABS = ['All', 'MANAGER', 'MAINTENANCE', 'ADMIN']
 
 function initials(u: UserRecord) {
   return `${u.firstName[0] ?? ''}${u.lastName[0] ?? ''}`.toUpperCase()
 }
 
+const EMPTY_FORM = {
+  firstName: '', lastName: '', email: '', phone: '',
+  role: 'MAINTENANCE', position: '', employeeId: '',
+  buildingId: '', password: 'Password123!',
+}
+
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<UserRecord[]>([])
+  const [buildings, setBuildings] = useState<Building[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [roleTab, setRoleTab] = useState(0)
 
+  // Create dialog
+  const [createOpen, setCreateOpen] = useState(false)
+  const [form, setForm] = useState({ ...EMPTY_FORM })
+  const [formError, setFormError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+
   const load = async () => {
     setLoading(true)
     setError(null)
     try {
-      const json = await authFetch('/users?limit=100')
-      setUsers(json?.data?.users ?? [])
+      const [usersJson, buildingsJson] = await Promise.allSettled([
+        authFetch('/users?limit=100'),
+        authFetch('/buildings'),
+      ])
+      if (usersJson.status === 'fulfilled') setUsers(usersJson.value?.data?.users ?? [])
+      if (buildingsJson.status === 'fulfilled') setBuildings(buildingsJson.value?.data?.buildings ?? [])
     } catch (e: any) {
       setError(e?.message || 'Failed to load users')
     } finally {
@@ -80,9 +104,7 @@ const UsersPage: React.FC = () => {
   const filtered = useMemo(() => {
     let list = users
     const role = ROLE_TABS[roleTab]
-    if (role !== 'All') {
-      list = list.filter(u => u.role === role)
-    }
+    if (role !== 'All') list = list.filter(u => u.role === role)
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(u =>
@@ -98,10 +120,42 @@ const UsersPage: React.FC = () => {
 
   const stats = useMemo(() => ({
     total: users.length,
-    active: users.filter(u => u.isActive).length,
-    tenants: users.filter(u => u.role === 'TENANT').length,
-    staff: users.filter(u => ['MAINTENANCE', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(u.role)).length,
+    managers: users.filter(u => u.role === 'MANAGER').length,
+    maintenance: users.filter(u => u.role === 'MAINTENANCE').length,
+    admins: users.filter(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role)).length,
   }), [users])
+
+  const handleCreate = async () => {
+    if (!form.firstName || !form.lastName || !form.email) {
+      setFormError('First name, last name, and email are required')
+      return
+    }
+    setCreating(true)
+    setFormError(null)
+    try {
+      await authFetch('/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          phone: form.phone || undefined,
+          role: form.role,
+          position: form.position || undefined,
+          employeeId: form.employeeId || undefined,
+          buildingId: form.buildingId || undefined,
+          password: form.password,
+        }),
+      })
+      setCreateOpen(false)
+      setForm({ ...EMPTY_FORM })
+      await load()
+    } catch (e: any) {
+      setFormError(e?.message || 'Failed to create user')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
     <Box>
@@ -109,18 +163,23 @@ const UsersPage: React.FC = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box>
           <Typography variant="h4">Users</Typography>
-          <Typography variant="body2" color="text.secondary">All users across your portfolio</Typography>
+          <Typography variant="body2" color="text.secondary">Staff members across your portfolio</Typography>
         </Box>
-        <Button variant="outlined" onClick={load}>Refresh</Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" onClick={load}>Refresh</Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)}>
+            New User
+          </Button>
+        </Stack>
       </Box>
 
       {/* Stats */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {[
-          { label: 'Total', value: stats.total, color: 'primary.main' },
-          { label: 'Active', value: stats.active, color: 'success.main' },
-          { label: 'Tenants', value: stats.tenants, color: 'info.main' },
-          { label: 'Staff', value: stats.staff, color: 'warning.main' },
+          { label: 'Total Staff', value: stats.total, color: 'primary.main' },
+          { label: 'Managers', value: stats.managers, color: 'info.main' },
+          { label: 'Maintenance', value: stats.maintenance, color: 'warning.main' },
+          { label: 'Admins', value: stats.admins, color: 'error.main' },
         ].map(s => (
           <Grid item xs={6} sm={3} key={s.label}>
             <Card variant="outlined">
@@ -183,14 +242,9 @@ const UsersPage: React.FC = () => {
                       {initials(user)}
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Typography variant="subtitle2" fontWeight={600} noWrap>
-                          {user.firstName} {user.lastName}
-                        </Typography>
-                        {!user.isActive && (
-                          <Chip label="Inactive" size="small" color="default" />
-                        )}
-                      </Box>
+                      <Typography variant="subtitle2" fontWeight={600} noWrap>
+                        {user.firstName} {user.lastName}
+                      </Typography>
                       <Typography variant="caption" color="text.secondary" noWrap display="block">
                         {user.email}
                       </Typography>
@@ -203,55 +257,117 @@ const UsersPage: React.FC = () => {
                     />
                   </Box>
 
-                  {/* Building / unit */}
                   {user.building && (
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
                       <PersonIcon sx={{ fontSize: 12, verticalAlign: 'middle', mr: 0.5 }} />
                       {user.building.name}
                       {user.unit ? ` · Unit ${user.unit.unitNumber}` : ''}
-                      {user.apartment && !user.unit ? ` · Apt ${user.apartment}` : ''}
                     </Typography>
                   )}
 
-                  {/* Position / employee ID */}
                   {(user.position || user.employeeId) && (
                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
                       {user.position ?? ''}{user.position && user.employeeId ? ' · ' : ''}{user.employeeId ? `#${user.employeeId}` : ''}
                     </Typography>
                   )}
 
-                  {/* Counts */}
                   {user._count && (
                     <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                       {user._count.submittedIssues > 0 && (
-                        <Chip
-                          label={`${user._count.submittedIssues} issue${user._count.submittedIssues !== 1 ? 's' : ''}`}
-                          size="small"
-                          variant="outlined"
-                        />
+                        <Chip label={`${user._count.submittedIssues} issue${user._count.submittedIssues !== 1 ? 's' : ''}`} size="small" variant="outlined" />
                       )}
                       {user._count.assignedWorkOrders > 0 && (
-                        <Chip
-                          label={`${user._count.assignedWorkOrders} WO${user._count.assignedWorkOrders !== 1 ? 's' : ''}`}
-                          size="small"
-                          variant="outlined"
-                        />
+                        <Chip label={`${user._count.assignedWorkOrders} WO${user._count.assignedWorkOrders !== 1 ? 's' : ''}`} size="small" variant="outlined" />
                       )}
                     </Stack>
                   )}
 
-                  {/* Last login */}
-                  {user.lastLoginAt && (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                      Last login: {new Date(user.lastLoginAt).toLocaleDateString()}
-                    </Typography>
-                  )}
+                  <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                    Joined {new Date(user.createdAt).toLocaleDateString()}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
           ))}
         </Grid>
       )}
+
+      {/* Create User Dialog */}
+      <Dialog open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>New Staff Member</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {formError && <Alert severity="error">{formError}</Alert>}
+
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="First name" required size="small" fullWidth
+                value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
+              />
+              <TextField
+                label="Last name" required size="small" fullWidth
+                value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
+              />
+            </Stack>
+
+            <TextField
+              label="Email" required size="small" fullWidth type="email"
+              value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+            />
+
+            <TextField
+              label="Phone" size="small" fullWidth
+              value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+            />
+
+            <FormControl size="small" fullWidth required>
+              <InputLabel>Role</InputLabel>
+              <Select value={form.role} label="Role" onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                <MenuItem value="MAINTENANCE">Maintenance</MenuItem>
+                <MenuItem value="MANAGER">Manager</MenuItem>
+                <MenuItem value="ADMIN">Admin</MenuItem>
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" fullWidth>
+              <InputLabel>Building (optional)</InputLabel>
+              <Select
+                value={form.buildingId}
+                label="Building (optional)"
+                onChange={e => setForm(f => ({ ...f, buildingId: e.target.value }))}
+              >
+                <MenuItem value=""><em>None</em></MenuItem>
+                {buildings.map(b => (
+                  <MenuItem key={b.id} value={b.id}>{b.name} — {b.address}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Position / title" size="small" fullWidth
+                value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
+              />
+              <TextField
+                label="Employee ID" size="small" fullWidth
+                value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))}
+              />
+            </Stack>
+
+            <TextField
+              label="Temporary password" required size="small" fullWidth
+              value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              helperText="Min 8 chars, must include uppercase, number, and special character"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setCreateOpen(false)} color="inherit">Cancel</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={creating}>
+            {creating ? <CircularProgress size={20} /> : 'Create User'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
