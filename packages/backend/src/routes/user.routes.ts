@@ -110,6 +110,8 @@ router.get('/', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_AD
           apartment: true,
           employeeId: true,
           position: true,
+          isActive: true,
+          lastLoginAt: true,
           createdAt: true,
           updatedAt: true,
           building: {
@@ -369,6 +371,7 @@ router.post('/', authenticateWithTenant, authorize(['ADMIN', 'SUPER_ADMIN']), as
         employeeId: data.employeeId,
         position: data.position,
         managementCompanyId: req.tenant.tenantId,
+        isActive: true,
         // In real app, store hashedPassword
       },
       select: {
@@ -569,9 +572,10 @@ router.delete('/:id', authenticateWithTenant, authorize(['ADMIN', 'SUPER_ADMIN']
       throw new AppError(400, 'Cannot deactivate user with active issues or work orders');
     }
 
-    // Soft delete: no isActive field in schema, just note the deactivation
-    // For now, we can't truly soft-delete — return success to unblock the flow
-    // TODO: add isActive field to User schema in a migration
+    await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isActive: false },
+    });
 
     res.json({
       status: 'success',
@@ -598,20 +602,20 @@ router.get('/stats/summary', authenticateWithTenant, authorize(['MANAGER', 'ADMI
       prisma.user.count({
         where: { managementCompanyId: req.tenant.tenantId },
       }),
-      // Active users (no isActive field in schema, count all)
+      // Active users
       prisma.user.count({
-        where: { managementCompanyId: req.tenant.tenantId },
+        where: { managementCompanyId: req.tenant.tenantId, isActive: true },
       }),
       // Users by role
       prisma.user.groupBy({
         by: ['role'],
-        where: { managementCompanyId: req.tenant.tenantId },
+        where: { managementCompanyId: req.tenant.tenantId, isActive: true },
         _count: true,
       }),
       // Users by building
       prisma.user.groupBy({
         by: ['buildingId'],
-        where: { managementCompanyId: req.tenant.tenantId, buildingId: { not: null } },
+        where: { managementCompanyId: req.tenant.tenantId, isActive: true, buildingId: { not: null } },
         _count: true,
       }),
       // Recent signups (last 30 days)

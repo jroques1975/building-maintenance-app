@@ -177,9 +177,11 @@ model User {
   employeeId    String?   // Employee ID within organization
   position      String?   // Job title
   
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   // Relations
   unit          Unit?     @relation("UnitOccupants", fields: [unitId], references: [id])
   currentOccupyingUnits Unit[] @relation("CurrentTenant")
