@@ -28,6 +28,7 @@ model Building {
   floors        Int?
   totalUnits    Int?
   ownerId       String?   // Building owner (different from manager)
+  notes         String?
   
   // ASSET REGISTRY (belongs to building permanently)
   assets        Asset[]
