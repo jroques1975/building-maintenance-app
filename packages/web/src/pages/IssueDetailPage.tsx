@@ -24,7 +24,7 @@ import {
   DialogActions,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Build as WOIcon, Comment as CommentIcon, AddCircleOutline as CreateWOIcon } from '@mui/icons-material'
+import { Build as WOIcon, Comment as CommentIcon, AddCircleOutline as CreateWOIcon, LinkOff as UnlinkIcon, Link as LinkIcon, CheckCircleOutline as CloseIssueIcon } from '@mui/icons-material'
 import { Issue } from '@shared/types'
 import issueService from '../services/issueService'
 import workOrderService from '../services/workOrderService'
@@ -75,6 +75,18 @@ const IssueDetailPage = () => {
   const [woForm, setWoForm] = useState({ title: '', description: '', priority: 'MEDIUM', assignedToId: '', scheduledDate: '', estimatedHours: '', notes: '' })
   const [woSubmitting, setWoSubmitting] = useState(false)
   const [woError, setWoError] = useState<string | null>(null)
+
+  // Close issue dialog state
+  const [closeOpen, setCloseOpen] = useState(false)
+  const [closureNote, setClosureNote] = useState('')
+  const [closeWarning, setCloseWarning] = useState<string | null>(null)
+  const [closeSubmitting, setCloseSubmitting] = useState(false)
+
+  // Link work order dialog state
+  const [linkWoOpen, setLinkWoOpen] = useState(false)
+  const [availableWos, setAvailableWos] = useState<Array<{ id: string; title: string; status: string; priority: string }>>([])
+  const [linkWoLoading, setLinkWoLoading] = useState(false)
+  const [linkWoError, setLinkWoError] = useState<string | null>(null)
 
   const isManager = user && ['MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(user.role)
 
@@ -231,6 +243,67 @@ const IssueDetailPage = () => {
     }
   }
 
+  const handleCloseIssue = async (force = false) => {
+    setCloseSubmitting(true)
+    setCloseWarning(null)
+    try {
+      const result = await issueService.closeIssue(issue.id, closureNote || undefined, force)
+      if (result.status === 'warning') {
+        setCloseWarning(result.message)
+        setCloseSubmitting(false)
+        return
+      }
+      setCloseOpen(false)
+      setClosureNote('')
+      setCloseWarning(null)
+      setActionMsg({ type: 'success', text: 'Issue closed successfully' })
+      await loadIssue()
+    } catch (e: any) {
+      setCloseWarning(e?.message || 'Failed to close issue')
+      setCloseSubmitting(false)
+    }
+  }
+
+  const openLinkWoDialog = async () => {
+    if (!issue) return
+    setLinkWoError(null)
+    setLinkWoOpen(true)
+    setLinkWoLoading(true)
+    try {
+      const res = await workOrderService.getWorkOrders({ buildingId: issue.buildingId, limit: '50' })
+      const linkedIds = new Set((issue.workOrders ?? []).map(w => w.id))
+      setAvailableWos(res.data.filter(w => !linkedIds.has(w.id)).map(w => ({
+        id: w.id,
+        title: w.title,
+        status: w.status,
+        priority: w.priority,
+      })))
+    } catch {
+      setLinkWoError('Failed to load work orders')
+    } finally {
+      setLinkWoLoading(false)
+    }
+  }
+
+  const handleLinkWo = async (woId: string) => {
+    try {
+      await workOrderService.updateWorkOrder(woId, { issueId: issue.id })
+      setLinkWoOpen(false)
+      await loadIssue()
+    } catch (e: any) {
+      setLinkWoError(e?.message || 'Failed to link work order')
+    }
+  }
+
+  const handleUnlinkWo = async (woId: string) => {
+    try {
+      await workOrderService.updateWorkOrder(woId, { issueId: null })
+      await loadIssue()
+    } catch (e: any) {
+      setActionMsg({ type: 'error', text: e?.message || 'Failed to unlink work order' })
+    }
+  }
+
   const assignedName = issue.assignedTo
     ? `${issue.assignedTo.firstName} ${issue.assignedTo.lastName}`
     : issue.assignedToId ? issue.assignedToId : 'Unassigned'
@@ -296,10 +369,17 @@ const IssueDetailPage = () => {
       {/* Linked Work Orders */}
       {issue.workOrders && issue.workOrders.length > 0 && (
         <Paper sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <WOIcon fontSize="small" />
-            Linked Work Orders ({issue.workOrders.length})
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <WOIcon fontSize="small" />
+              Linked Work Orders ({issue.workOrders.length})
+            </Typography>
+            {isManager && (
+              <Button size="small" startIcon={<LinkIcon />} onClick={openLinkWoDialog} variant="outlined">
+                Link WO
+              </Button>
+            )}
+          </Box>
           <Stack spacing={1.5}>
             {issue.workOrders.map(wo => (
               <Card
@@ -319,7 +399,7 @@ const IssueDetailPage = () => {
                         </Typography>
                       )}
                     </Box>
-                    <Stack direction="row" spacing={0.5}>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
                       <Chip
                         label={wo.priority}
                         size="small"
@@ -331,6 +411,17 @@ const IssueDetailPage = () => {
                         size="small"
                         color={STATUS_COLOR[wo.status] ?? 'default'}
                       />
+                      {isManager && (
+                        <Button
+                          size="small"
+                          color="inherit"
+                          startIcon={<UnlinkIcon fontSize="small" />}
+                          onClick={e => { e.stopPropagation(); handleUnlinkWo(wo.id) }}
+                          sx={{ ml: 0.5, minWidth: 0, px: 1, fontSize: 11 }}
+                        >
+                          Unlink
+                        </Button>
+                      )}
                     </Stack>
                   </Box>
                   {wo.estimatedHours != null && (
@@ -343,6 +434,21 @@ const IssueDetailPage = () => {
               </Card>
             ))}
           </Stack>
+        </Paper>
+      )}
+
+      {/* Link WO section header (when no linked WOs yet, managers can still link) */}
+      {isManager && (!issue.workOrders || issue.workOrders.length === 0) && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <WOIcon fontSize="small" />
+              Linked Work Orders (0)
+            </Typography>
+            <Button size="small" startIcon={<LinkIcon />} onClick={openLinkWoDialog} variant="outlined">
+              Link WO
+            </Button>
+          </Box>
         </Paper>
       )}
 
@@ -500,19 +606,108 @@ const IssueDetailPage = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Close Issue dialog */}
+      <Dialog open={closeOpen} onClose={() => { setCloseOpen(false); setCloseWarning(null); setClosureNote('') }} maxWidth="sm" fullWidth>
+        <DialogTitle>Resolve / Close Issue</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {closeWarning && (
+              <Alert severity="warning">
+                {closeWarning}
+              </Alert>
+            )}
+            <TextField
+              label="Closure note (optional)"
+              fullWidth
+              multiline
+              rows={3}
+              size="small"
+              placeholder="Describe how the issue was resolved..."
+              value={closureNote}
+              onChange={e => setClosureNote(e.target.value)}
+              disabled={closeSubmitting}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => { setCloseOpen(false); setCloseWarning(null); setClosureNote('') }} color="inherit">
+            Cancel
+          </Button>
+          {closeWarning ? (
+            <Button variant="contained" color="warning" onClick={() => handleCloseIssue(true)} disabled={closeSubmitting}>
+              {closeSubmitting ? <CircularProgress size={20} /> : 'Close Anyway'}
+            </Button>
+          ) : (
+            <Button variant="contained" color="success" onClick={() => handleCloseIssue(false)} disabled={closeSubmitting}>
+              {closeSubmitting ? <CircularProgress size={20} /> : 'Resolve Issue'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Link Work Order dialog */}
+      <Dialog open={linkWoOpen} onClose={() => setLinkWoOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Link Existing Work Order</DialogTitle>
+        <DialogContent>
+          {linkWoLoading ? (
+            <Box sx={{ py: 3, display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
+          ) : linkWoError ? (
+            <Alert severity="error">{linkWoError}</Alert>
+          ) : availableWos.length === 0 ? (
+            <Alert severity="info">No unlinked work orders found for this building.</Alert>
+          ) : (
+            <Stack spacing={1} sx={{ mt: 1 }}>
+              {availableWos.map(wo => (
+                <Card
+                  key={wo.id}
+                  variant="outlined"
+                  sx={{ cursor: 'pointer', '&:hover': { borderColor: 'primary.main' } }}
+                  onClick={() => handleLinkWo(wo.id)}
+                >
+                  <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="subtitle2">{wo.title}</Typography>
+                      <Stack direction="row" spacing={0.5}>
+                        <Chip label={wo.priority} size="small" color={PRIORITY_COLOR[wo.priority] ?? 'default'} variant="outlined" />
+                        <Chip label={wo.status.replace(/_/g, ' ')} size="small" color={STATUS_COLOR[wo.status] ?? 'default'} />
+                      </Stack>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setLinkWoOpen(false)} color="inherit">Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Manager actions */}
       {isManager && (
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Manage Issue</Typography>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<CreateWOIcon />}
-              onClick={openWoDialog}
-            >
-              Create Work Order
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                size="small"
+                color="success"
+                startIcon={<CloseIssueIcon />}
+                onClick={() => { setCloseWarning(null); setClosureNote(''); setCloseOpen(true) }}
+                disabled={issue.status === 'COMPLETED' || issue.status === 'CANCELLED'}
+              >
+                Resolve / Close
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<CreateWOIcon />}
+                onClick={openWoDialog}
+              >
+                Create Work Order
+              </Button>
+            </Stack>
           </Box>
 
           {actionMsg && (

@@ -26,6 +26,7 @@ const createWorkOrderSchema = z.object({
 const updateWorkOrderSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().min(1).max(5000).optional(),
+  issueId: z.string().nullable().optional(),
   assignedToId: z.string().optional(),
   priority: z.nativeEnum(WorkOrderPriority).optional(),
   status: z.nativeEnum(WorkOrderStatus).optional(),
@@ -644,6 +645,20 @@ router.put('/:id', authenticateWithTenant, authorize(['MAINTENANCE', 'MANAGER', 
       const invalidFields = Object.keys(data).filter(key => !allowedFields.includes(key));
       if (invalidFields.length > 0) {
         throw new AppError(403, `Maintenance staff cannot update: ${invalidFields.join(', ')}`);
+      }
+    }
+
+    // If linking to an issue, verify it belongs to this tenant
+    if (data.issueId != null) {
+      const linkedIssue = await prisma.issue.findFirst({
+        where: {
+          id: data.issueId,
+          building: { currentManagementId: req.tenant.tenantId },
+        },
+        select: { id: true },
+      });
+      if (!linkedIssue) {
+        throw new AppError(404, 'Issue not found or not accessible');
       }
     }
 

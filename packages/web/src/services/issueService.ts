@@ -267,6 +267,33 @@ const issueService = {
     return data.data.issue;
   },
 
+  async closeIssue(id: string, closureNote?: string, force?: boolean): Promise<{ status: string; message: string; data?: any }> {
+    const token = tokenService.getToken();
+    if (!token) throw new Error('Authentication required');
+
+    const response = await fetch(`${API_BASE}/issues/${id}/close`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ closureNote, force }),
+    });
+
+    const json = await response.json().catch(() => ({}));
+
+    if (response.status === 409) {
+      // Warning: open work orders — return so caller can decide to force
+      return json;
+    }
+
+    if (!response.ok) {
+      throw new Error(json.message || 'Failed to close issue');
+    }
+
+    return json;
+  },
+
   async getMyIssues(): Promise<PaginatedResponse<Issue>> {
     if (ENABLE_MOCK) {
       await new Promise(resolve => setTimeout(resolve, 300));

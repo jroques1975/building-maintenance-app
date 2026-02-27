@@ -46,6 +46,7 @@ export interface CreateWorkOrderDto {
 export interface UpdateWorkOrderDto {
   title?: string;
   description?: string;
+  issueId?: string | null;
   assignedToId?: string;
   priority?: WorkOrderPriority;
   status?: WorkOrderStatus;

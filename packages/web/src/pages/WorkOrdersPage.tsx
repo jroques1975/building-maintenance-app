@@ -43,6 +43,8 @@ const WorkOrdersPage: React.FC = () => {
   })
   const [formError, setFormError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [buildingIssues, setBuildingIssues] = useState<Array<{ id: string; title: string; status: string }>>([])
+  const [issuesLoading, setIssuesLoading] = useState(false)
 
   // Inline status update state
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -82,6 +84,25 @@ const WorkOrdersPage: React.FC = () => {
     })
   }, [createOpen])
 
+  // Load issues for selected building
+  useEffect(() => {
+    const buildingId = form.buildingId
+    if (!buildingId || !createOpen) {
+      setBuildingIssues([])
+      return
+    }
+    setIssuesLoading(true)
+    const token = tokenService.getToken()
+    if (!token) { setIssuesLoading(false); return }
+    fetch(`${API_BASE}/issues?buildingId=${buildingId}&limit=50&status=PENDING&status=IN_REVIEW&status=SCHEDULED&status=IN_PROGRESS`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(j => setBuildingIssues((j?.data?.issues ?? []).map((i: any) => ({ id: i.id, title: i.title, status: i.status }))))
+      .catch(() => setBuildingIssues([]))
+      .finally(() => setIssuesLoading(false))
+  }, [form.buildingId, createOpen])
+
   const filtered = useMemo(() => {
     if (tab === 1) return workOrders.filter(w => !['COMPLETED', 'CANCELLED'].includes(w.status))
     if (tab === 2) return workOrders.filter(w => w.status === 'COMPLETED')
@@ -106,6 +127,7 @@ const WorkOrdersPage: React.FC = () => {
       await workOrderService.createWorkOrder(form)
       setCreateOpen(false)
       setForm({ title: '', description: '', buildingId: '', priority: 'MEDIUM' })
+      setBuildingIssues([])
       setPage(1)
       await load(1)
     } catch (e: any) {
@@ -299,10 +321,26 @@ const WorkOrdersPage: React.FC = () => {
               <Select
                 value={form.buildingId}
                 label="Building"
-                onChange={e => setForm(f => ({ ...f, buildingId: e.target.value }))}
+                onChange={e => setForm(f => ({ ...f, buildingId: e.target.value, issueId: undefined }))}
               >
                 {buildings.map(b => (
                   <MenuItem key={b.id} value={b.id}>{b.name} — {b.address}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth size="small" disabled={!form.buildingId || issuesLoading}>
+              <InputLabel>Related Issue (optional)</InputLabel>
+              <Select
+                value={form.issueId ?? ''}
+                label="Related Issue (optional)"
+                onChange={e => setForm(f => ({ ...f, issueId: e.target.value || undefined }))}
+              >
+                <MenuItem value=""><em>None</em></MenuItem>
+                {buildingIssues.map(i => (
+                  <MenuItem key={i.id} value={i.id}>
+                    {i.title} <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>({i.status.replace(/_/g, ' ')})</Typography>
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>

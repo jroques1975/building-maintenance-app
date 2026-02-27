@@ -1079,6 +1079,131 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['TENANT', 'MAINT
 });
 
 /**
+ * @route POST /api/issues/:id/close
+ * @desc Close/resolve an issue. Warns if open work orders exist; use force=true to override.
+ * @access MANAGER+
+ */
+router.post('/:id/close', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_ADMIN']), async (req, res, next) => {
+  try {
+    if (!req.tenant || !req.user) {
+      throw new AppError(401, 'Authentication required');
+    }
+
+    const { closureNote, force } = z.object({
+      closureNote: z.string().max(5000).optional(),
+      force: z.boolean().optional(),
+    }).parse(req.body);
+
+    const existingIssue = await prisma.issue.findFirst({
+      where: {
+        id: req.params.id,
+        building: { currentManagementId: req.tenant.tenantId },
+      },
+      select: {
+        id: true,
+        status: true,
+        buildingId: true,
+        _count: {
+          select: {
+            workOrders: {
+              where: { status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+            },
+          },
+        },
+      },
+    });
+
+    if (!existingIssue) {
+      throw new AppError(404, 'Issue not found or not accessible');
+    }
+
+    const openWoCount = existingIssue._count.workOrders;
+
+    if (openWoCount > 0 && !force) {
+      res.status(409).json({
+        status: 'warning',
+        message: `This issue has ${openWoCount} open work order${openWoCount > 1 ? 's' : ''}. Pass force=true to close anyway.`,
+        data: { openWorkOrders: openWoCount },
+      });
+      return;
+    }
+
+    const issue = await prisma.issue.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'COMPLETED',
+        completedDate: new Date(),
+      },
+      select: {
+        id: true,
+        status: true,
+        completedDate: true,
+        updatedAt: true,
+      },
+    });
+
+    if (closureNote?.trim()) {
+      await prisma.comment.create({
+        data: {
+          content: closureNote.trim(),
+          issueId: req.params.id,
+          authorId: req.user.userId,
+          buildingId: existingIssue.buildingId,
+        },
+      });
+    }
+
+    res.json({
+      status: 'success',
+      data: { issue },
+      message: 'Issue closed successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route DELETE /api/issues/:id
+ * @desc Delete an issue. Unlinks (sets issueId=null) any linked work orders first.
+ * @access MANAGER+
+ */
+router.delete('/:id', authenticateWithTenant, authorize(['MANAGER', 'ADMIN', 'SUPER_ADMIN']), async (req, res, next) => {
+  try {
+    if (!req.tenant) {
+      throw new AppError(401, 'Authentication required');
+    }
+
+    const existingIssue = await prisma.issue.findFirst({
+      where: {
+        id: req.params.id,
+        building: { currentManagementId: req.tenant.tenantId },
+      },
+      select: { id: true },
+    });
+
+    if (!existingIssue) {
+      throw new AppError(404, 'Issue not found or not accessible');
+    }
+
+    // Unlink work orders before deleting
+    await prisma.workOrder.updateMany({
+      where: { issueId: req.params.id },
+      data: { issueId: null },
+    });
+
+    await prisma.issue.delete({ where: { id: req.params.id } });
+
+    res.json({
+      status: 'success',
+      message: 'Issue deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route GET /api/issues/stats/summary
  * @desc Get issue statistics summary
  * @access MANAGER+
