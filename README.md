@@ -25,6 +25,7 @@ Tenants submit issues → Managers assign to staff → Staff completes work orde
 | Storage | AWS S3 (presigned PUT/GET, 1hr expiry) |
 | Validation | Zod (shared schemas in `packages/shared`) |
 | DevOps | Docker Compose, GitHub Actions CI, Husky pre-commit hooks |
+| Production | Ubuntu 24.04 VPS, PM2, Nginx, native PostgreSQL |
 
 ---
 
@@ -105,7 +106,7 @@ npx prisma studio           # Open Prisma Studio GUI
 |---|---|---|
 | `/` | Role-routed dashboard | All |
 | `/issues` | Issues list (paginated, server-side search) | MAINTENANCE, MANAGER, ADMIN |
-| `/issues/:id` | Issue detail (linked WOs, comments, assign/status) | All |
+| `/issues/:id` | Issue detail (linked WOs, comments, assign/status/close, link/unlink WO) | All |
 | `/work-orders` | Work orders list (paginated) | MANAGER, ADMIN |
 | `/work-orders/:id` | Work order detail | MAINTENANCE, MANAGER, ADMIN |
 | `/operator-continuity` | Portfolio + per-building timeline | MANAGER, ADMIN |
@@ -124,11 +125,25 @@ npx prisma studio           # Open Prisma Studio GUI
 
 ## API
 
-- **Base URL:** `http://localhost:3002/api`
+| Environment | Base URL |
+|---|---|
+| Local dev | `http://localhost:3002/api` |
+| Tailscale dev | `http://100.78.107.25:3002/api` |
+| Production | `http://159.203.83.145/api` |
+
 - **Auth:** `Authorization: Bearer <jwt>`
 - All routes carry tenant context via JWT claims.
 
-Registered route groups: `/api/issues`, `/api/work-orders`, `/api/buildings`, `/api/users`, `/api/operators`, `/api/auth`
+### Route groups
+| Group | Key endpoints |
+|---|---|
+| `/api/auth` | `POST /login`, `POST /register` |
+| `/api/issues` | CRUD, `POST /:id/assign`, `POST /:id/status`, `POST /:id/close`, `DELETE /:id`, `GET /:id/comments`, `POST /:id/comments` |
+| `/api/work-orders` | CRUD (issueId nullable — link/unlink), `POST /:id/comments` |
+| `/api/buildings` | CRUD |
+| `/api/users` | CRUD, deactivate |
+| `/api/uploads` | `POST /presign` (S3 presigned PUT) |
+| `/api/operators` | Operator periods |
 
 ---
 
@@ -157,13 +172,17 @@ Canonical UI prototypes (source of truth):
 - JWT auth + tenant context on all routes; role-based authorization middleware
 - All dashboards wired to live API (no mock data except AdminDashboard system health metrics)
 - Issues: full CRUD, server-side search (400ms debounce), photo attachments (up to 4, S3 presigned), assign + status update
-- Work orders: full CRUD, role-gated actions, linked issues
+- **Issue close flow**: `POST /issues/:id/close` — warns if open WOs exist, accepts `closureNote`, `force` override; creates comment on close
+- **Issue delete**: `DELETE /issues/:id` — nulls `issueId` on linked WOs before deleting (no cascade)
+- **WO link/unlink**: `PUT /work-orders/:id` accepts `issueId` (nullable); IssueDetailPage has Link/Unlink UI
+- Work orders: full CRUD, role-gated actions, optional Related Issue selector on create
 - Operator Continuity: portfolio view, per-building timeline, search filter
 - Buildings: list + detail pages
 - Users: list, deactivate/soft-delete, `isActive` + `lastLoginAt` fields
 - Pagination: server-side, 20 items/page on Issues and Work Orders
 - Vite code splitting via `React.lazy` (per-page chunks)
 - Multi-tenant isolation, Docker dev environment, seed data, CI pipelines
+- **Production deployment** live at `http://159.203.83.145` (PM2 + Nginx + PostgreSQL native on 1GB VPS)
 
 ---
 
@@ -174,9 +193,20 @@ Canonical UI prototypes (source of truth):
 
 ---
 
+## Production
+
+- **URL**: `http://159.203.83.145`
+- **Deploy guide**: `06-Deployment-Ops/DEPLOYMENT-PLAN.md`
+- Frontend built locally (server 1GB RAM — Vite OOMs), rsync'd to `/var/www/building-maintenance/`
+- Backend managed by PM2, auto-restarts on crash/reboot
+- S3 CORS must be set manually in AWS Console (IAM user lacks `PutBucketCORS`)
+
+---
+
 ## Next Steps
 
 1. **UI polish** — Full visual parity against canonical prototypes across all pages.
+2. **Production hardening** — HTTPS/TLS, domain name, monitoring.
 
 ---
 
@@ -188,9 +218,11 @@ Canonical UI prototypes (source of truth):
 - `05-Development/DESIGN-STYLE-LOCK.md` — Visual design tokens (locked)
 - `05-Development/UI-SOURCE-OF-TRUTH.md` — Canonical prototype references
 - `05-Development/PHASE-IMPLEMENTATION-STATUS-2026-02-21.md` — Last sprint status
+- `06-Deployment-Ops/DEPLOYMENT-PLAN.md` — Full production deploy guide
 - `Agent continuity.md` — Handoff doc with runtime/seed/known issues
 
 ---
 
-**Last Updated:** 2026-02-25
+**Last Updated:** 2026-02-28
 **Repository:** https://github.com/jroques1975/building-maintenance-app
+**Production:** http://159.203.83.145
