@@ -1026,6 +1026,7 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['TENANT', 'MAINT
       },
       select: {
         id: true,
+        buildingId: true,
         submittedById: true,
         assignedToId: true,
       },
@@ -1049,7 +1050,7 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['TENANT', 'MAINT
         content: data.content,
         issueId: req.params.id,
         authorId: req.user.userId,
-        buildingId: req.tenant.tenantId, // Store tenant context for filtering
+        buildingId: issue.buildingId,
       },
       select: {
         id: true,

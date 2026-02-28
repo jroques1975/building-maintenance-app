@@ -838,6 +838,7 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['MAINTENANCE', '
       },
       select: {
         id: true,
+        buildingId: true,
         assignedToId: true,
       },
     });
@@ -856,7 +857,7 @@ router.post('/:id/comments', authenticateWithTenant, authorize(['MAINTENANCE', '
         content: data.content,
         workOrderId: req.params.id,
         authorId: req.user.userId,
-        buildingId: req.tenant.tenantId,
+        buildingId: workOrder.buildingId,
       },
       select: {
         id: true,
